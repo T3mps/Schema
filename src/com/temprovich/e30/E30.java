@@ -11,6 +11,8 @@ import java.util.List;
 /*
  * https://timothya.com/pdfs/crafting-interpreters.pdf
  * https://drive.google.com/file/d/0B1MogsyNAsj9elVzQWR5NWVTSVE/view?resourcekey=0-zoBDMpzTafr6toxDuQLNUg
+ * 
+ * Left off on chapter 9, page 133
  */
 public class E30 {
 
