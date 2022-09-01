@@ -1,5 +1,6 @@
 package com.temprovich.e30;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Parser {
@@ -11,16 +12,95 @@ public class Parser {
         this.tokens = tokens;
     }
 
-    public Expression parse() {
+    public List<Statement> parse() {
+        List<Statement> statements = new ArrayList<Statement>();
+
+        while (!atEnd()) {
+            statements.add(declaration());
+        }
+        
+        return statements;
+    }
+
+    private Statement declaration() {
         try {
-            return expression();
-        } catch (ParseException e) {
+            if (match(TokenType.AUTO)) {
+                return autoDeclaration();
+            }
+
+            return statement();
+        } catch (E30ParseException e) {
+            synchronize();
             return null;
         }
     }
 
+    private Statement autoDeclaration() {
+        Token name = consume(TokenType.IDENTIFIER, "Expected name after 'auto'");
+
+        Expression initializer = null;
+        if (match(TokenType.EQUAL)) {
+            initializer = expression();
+        }
+
+        consume(TokenType.SEMICOLON, "Expected ';' after variable declaration");
+        return new Statement.Auto(name, initializer);
+    }
+
+    private Statement statement() {
+        if (match(TokenType.PRINT)) {
+            return printStatement();
+        }
+        if (match(TokenType.LEFT_BRACE)) {
+            return new Statement.Block(block());
+        }
+
+        return expressionStatement();
+    }
+
+    private Statement expressionStatement() {
+        Expression expression = expression();
+        consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+        return new Statement.Expr(expression);
+    }
+
+    private Statement printStatement() {
+        Expression expression = expression();
+        consume(TokenType.SEMICOLON, "Expect ';' after value.");
+        return new Statement.Print(expression);
+    }
+
+    private List<Statement> block() {
+        List<Statement> statements = new ArrayList<Statement>();
+
+        while (!check(TokenType.RIGHT_BRACE) && !atEnd()) {
+            statements.add(declaration());
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
+    }
+
     private Expression expression() {
-        return equality();
+        return assignment();
+    }
+
+    private Expression assignment() {
+        Expression expression = equality();
+
+        if (match(TokenType.EQUAL)) {
+            Token equals = previous();
+            Expression value = assignment();
+
+            if (expression instanceof Expression.Variable) {
+                Token name = ((Expression.Variable) expression).name();
+                return new Expression.Assign(name, value);
+            }
+
+            error(equals, "Invalid assignment target.");
+        }
+
+        return expression;
     }
 
     private Expression equality() {
@@ -85,19 +165,18 @@ public class Parser {
         if (match(TokenType.FALSE)) {
             return new Expression.Literal(false);
         }
-
         if (match(TokenType.TRUE)) {
             return new Expression.Literal(true);
         }
-        
         if (match(TokenType.NULL)) {
             return new Expression.Literal(null);
         }
-        
         if (match(TokenType.NUMBER, TokenType.STRING)) {
             return new Expression.Literal(previous().literal());
         }
-        
+        if (match(TokenType.IDENTIFIER)) {
+            return new Expression.Variable(previous());
+        }
         if (match(TokenType.LEFT_PAREN)) {
             Expression expression = expression();
             consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.");
@@ -139,9 +218,9 @@ public class Parser {
         throw error(peek(), message);
     }
 
-    private ParseException error(Token token, String message) {
+    private E30ParseException error(Token token, String message) {
         E30.error(token, message);
-        return new ParseException(token, message);
+        return new E30ParseException(token, message);
     }
 
     private boolean match(TokenType... types) {

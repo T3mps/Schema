@@ -8,16 +8,22 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
-import com.temprovich.e30.util.AbstractSyntaxTreePrinter;
-
+/*
+ * https://timothya.com/pdfs/crafting-interpreters.pdf
+ * https://drive.google.com/file/d/0B1MogsyNAsj9elVzQWR5NWVTSVE/view?resourcekey=0-zoBDMpzTafr6toxDuQLNUg
+ */
 public class E30 {
+
+    private static final Interpreter interpreter = new Interpreter();
     
     static boolean hadError = false;
+    static boolean hadRuntimeError = false;
 
     private E30 () {
     }
 
     public static void main(String[] args) throws IOException {
+        args = new String[] { "scripts/test.e30" };
         if (args.length > 1) {
             System.out.println("Usage: e30 [script]");
             System.exit(64);
@@ -32,6 +38,13 @@ public class E30 {
     private static void runScript(String path) throws IOException {
         byte[] bytes = Files.readAllBytes(Paths.get(path));
         run(new String(bytes, Charset.defaultCharset()));
+
+        if (hadError) {
+            System.exit(65);
+        }
+        if (hadRuntimeError) {
+            System.exit(70);
+        }
 
         if (hadError) {
             System.exit(65);
@@ -56,13 +69,13 @@ public class E30 {
         Lexer lexer = new Lexer(src);
         List<Token> tokens = lexer.tokenize();
         Parser parser = new Parser(tokens);
-        Expression expression = parser.parse();
+        List<Statement> statements = parser.parse();
 
         if (hadError) {
             return;
         }
 
-        System.out.println(new AbstractSyntaxTreePrinter().print(expression));
+        interpreter.interpret(statements);
     }
 
     public static void error(int line, String message) {
@@ -75,6 +88,11 @@ public class E30 {
         } else {
             report(token.line(), " at '" + token.lexeme() + "'", message);
         }
+    }
+
+    public static void runtimeError(E30RuntimeException error) {
+        System.err.println(error.getMessage() + "\n[line " + error.token().line() + "]");
+        hadRuntimeError = true;
     }
 
     private static void report(int line, String where, String message) {

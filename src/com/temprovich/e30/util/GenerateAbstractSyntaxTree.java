@@ -18,13 +18,22 @@ public class GenerateAbstractSyntaxTree {
         // String outputDir = args[0];
         String outputDir = "src/com/temprovich/e30";
         define(outputDir, "Expression", Arrays.asList(
-                 "Binary   : Expression left, Token operator, Expression right",
-                 "Grouping : Expression expression",
-                 "Literal  : Object value",
-                 "Unary    : Token operator, Expression right"
+            "Assign   : Token name, Expression value",
+            "Binary   : Expression left, Token operator, Expression right",
+            "Grouping : Expression expression",
+            "Literal  : Object value",
+            "Unary    : Token operator, Expression right",
+            "Variable : Token name"
+        ));
+
+        define(outputDir, "Statement", Arrays.asList(
+            "Block : List<Statement> statements",
+            "Expr  : Expression expression",
+            "Print : Expression expression",
+            "Auto  : Token name, Expression value"
         ));
     }
-     
+    
     private static void define(String outputDirectory, String baseName, List<String> types) throws IOException {
         String path = outputDirectory + "/" + baseName + ".java";
         PrintWriter writer = new PrintWriter(path, "UTF-8");
@@ -45,7 +54,6 @@ public class GenerateAbstractSyntaxTree {
 
         }
         
-        writer.println();
         writer.println(INDENT + "public abstract <R> R accept(Visitor<R> visitor);");
 
         writer.println("}");
@@ -102,6 +110,7 @@ public class GenerateAbstractSyntaxTree {
         writer.println(INDENT + "public interface Visitor<R> {");
         for (String type : types) {
             String className = type.split(":")[0].trim();
+            writer.println();
             writer.println(INDENT + INDENT + "public abstract R visit" + className + baseName + "(" + className + " " + className.toLowerCase() + ");");
         }
         writer.println(INDENT + "}");

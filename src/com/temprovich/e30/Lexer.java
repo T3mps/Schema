@@ -7,26 +7,44 @@ import java.util.Map;
 
 public final class Lexer {
 
+    public static final String KW_AND = "and";
+    public static final String KW_CLASS = "class";
+    public static final String KW_ELSE = "else";
+    public static final String KW_FALSE = "false";
+    public static final String KW_FOR = "for";
+    public static final String KW_FUNCTION = "function";
+    public static final String KW_IF = "if";
+    public static final String KW_NULL = "null";
+    public static final String KW_OR = "or";
+    @Deprecated
+    public static final String KW_PRINT = "print";
+    public static final String KW_RETURN = "return";
+    public static final String KW_SUPER = "super";
+    public static final String KW_SELF = "self";
+    public static final String KW_TRUE = "true";
+    public static final String KW_AUTO = "auto";
+    public static final String KW_WHILE = "while";
+
     private static final Map<String, TokenType> keywords;
 
     static {
         keywords = new HashMap<String, TokenType>();
-        keywords.put("and", TokenType.AND);
-        keywords.put("class", TokenType.CLASS);
-        keywords.put("else", TokenType.ELSE);
-        keywords.put("false", TokenType.FALSE);
-        keywords.put("for", TokenType.FOR);
-        keywords.put("function", TokenType.FUNCTION);
-        keywords.put("if", TokenType.IF);
-        keywords.put("null", TokenType.NULL);
-        keywords.put("or", TokenType.OR);
-        keywords.put("print", TokenType.PRINT);
-        keywords.put("return", TokenType.RETURN);
-        keywords.put("super", TokenType.SUPER);
-        keywords.put("self", TokenType.SELF);
-        keywords.put("true", TokenType.TRUE);
-        keywords.put("auto", TokenType.AUTO);
-        keywords.put("while", TokenType.WHILE);
+        keywords.put(KW_AND, TokenType.AND);
+        keywords.put(KW_CLASS, TokenType.CLASS);
+        keywords.put(KW_ELSE, TokenType.ELSE);
+        keywords.put(KW_FALSE, TokenType.FALSE);
+        keywords.put(KW_FOR, TokenType.FOR);
+        keywords.put(KW_FUNCTION, TokenType.FUNCTION);
+        keywords.put(KW_IF, TokenType.IF);
+        keywords.put(KW_NULL, TokenType.NULL);
+        keywords.put(KW_OR, TokenType.OR);
+        keywords.put(KW_PRINT, TokenType.PRINT);
+        keywords.put(KW_RETURN, TokenType.RETURN);
+        keywords.put(KW_SUPER, TokenType.SUPER);
+        keywords.put(KW_SELF, TokenType.SELF);
+        keywords.put(KW_TRUE, TokenType.TRUE);
+        keywords.put(KW_AUTO, TokenType.AUTO);
+        keywords.put(KW_WHILE, TokenType.WHILE);
     }
     
     private final String source;

@@ -3,10 +3,42 @@ package com.temprovich.e30;
 public abstract class Expression {
 
     public interface Visitor<R> {
+
+        public abstract R visitAssignExpression(Assign assign);
+
         public abstract R visitBinaryExpression(Binary binary);
+
         public abstract R visitGroupingExpression(Grouping grouping);
+
         public abstract R visitLiteralExpression(Literal literal);
+
         public abstract R visitUnaryExpression(Unary unary);
+
+        public abstract R visitVariableExpression(Variable variable);
+    }
+
+    public static class Assign extends Expression {
+
+        private final Token name;
+        private final Expression value;
+
+        public Assign(Token name, Expression value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        public Token name() {
+            return name;
+        }
+
+        public Expression value() {
+            return value;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitAssignExpression(this);
+        }
     }
 
     public static class Binary extends Expression {
@@ -99,6 +131,23 @@ public abstract class Expression {
         }
     }
 
+    public static class Variable extends Expression {
+
+        private final Token name;
+
+        public Variable(Token name) {
+            this.name = name;
+        }
+
+        public Token name() {
+            return name;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitVariableExpression(this);
+        }
+    }
 
     public abstract <R> R accept(Visitor<R> visitor);
 }

@@ -1,0 +1,23 @@
+auto a = "global a";
+auto b = "global b";
+auto c = "global c";
+
+{
+    auto a = "outer a";
+    auto b = "outer b";
+
+    {
+        auto a = "inner a";
+        print a;
+        print b;
+        print c;
+    }
+
+    print a;
+    print b;
+    print c;
+}
+
+print a;
+print b;
+print c;
