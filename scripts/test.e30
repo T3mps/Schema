@@ -1,23 +1,6 @@
-auto a = "global a";
-auto b = "global b";
-auto c = "global c";
 
-{
-    auto a = "outer a";
-    auto b = "outer b";
-
-    {
-        auto a = "inner a";
-        print a;
-        print b;
-        print c;
-    }
-
-    print a;
-    print b;
-    print c;
+function say_hi(first, last) {
+    print("Hi, " + first + " " + last + "!");
 }
 
-print a;
-print b;
-print c;
+say_hi("Ethan", "Temprovich");

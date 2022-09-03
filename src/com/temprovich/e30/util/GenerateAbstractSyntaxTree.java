@@ -18,19 +18,23 @@ public class GenerateAbstractSyntaxTree {
         // String outputDir = args[0];
         String outputDir = "src/com/temprovich/e30";
         define(outputDir, "Expression", Arrays.asList(
-            "Assign   : Token name, Expression value",
-            "Binary   : Expression left, Token operator, Expression right",
-            "Grouping : Expression expression",
             "Literal  : Object value",
+            "Grouping : Expression expression",
             "Unary    : Token operator, Expression right",
-            "Variable : Token name"
+            "Binary   : Expression left, Token operator, Expression right",
+            "Call     : Expression callee, Token paren, List<Expression> arguments",
+            "Assign   : Token name, Expression value",
+            "Variable : Token name",
+            "Logical  : Expression left, Token operator, Expression right"
         ));
 
         define(outputDir, "Statement", Arrays.asList(
             "Block : List<Statement> statements",
-            "Expr  : Expression expression",
-            "Print : Expression expression",
-            "Auto  : Token name, Expression value"
+            "Expr     : Expression expression",
+            "Function : Token name, List<Token> parameters, List<Statement> body",
+            "If       : Expression condition, Statement thenBranch, Statement elseBranch",
+            "Auto     : Token name, Expression value",
+            "While    : Expression condition, Statement body"
         ));
     }
     
@@ -111,7 +115,7 @@ public class GenerateAbstractSyntaxTree {
         for (String type : types) {
             String className = type.split(":")[0].trim();
             writer.println();
-            writer.println(INDENT + INDENT + "public abstract R visit" + className + baseName + "(" + className + " " + className.toLowerCase() + ");");
+            writer.println(INDENT + INDENT + "public abstract R visit" + className + baseName + "(" + className + " statement);");
         }
         writer.println(INDENT + "}");
         writer.println();

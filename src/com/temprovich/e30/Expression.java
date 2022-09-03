@@ -1,43 +1,85 @@
 package com.temprovich.e30;
 
+import java.util.List;
+
 public abstract class Expression {
 
     public interface Visitor<R> {
 
-        public abstract R visitAssignExpression(Assign assign);
+        public abstract R visitLiteralExpression(Literal statement);
 
-        public abstract R visitBinaryExpression(Binary binary);
+        public abstract R visitGroupingExpression(Grouping statement);
 
-        public abstract R visitGroupingExpression(Grouping grouping);
+        public abstract R visitUnaryExpression(Unary statement);
 
-        public abstract R visitLiteralExpression(Literal literal);
+        public abstract R visitBinaryExpression(Binary statement);
 
-        public abstract R visitUnaryExpression(Unary unary);
+        public abstract R visitCallExpression(Call statement);
 
-        public abstract R visitVariableExpression(Variable variable);
+        public abstract R visitAssignExpression(Assign statement);
+
+        public abstract R visitVariableExpression(Variable statement);
+
+        public abstract R visitLogicalExpression(Logical statement);
     }
 
-    public static class Assign extends Expression {
+    public static class Literal extends Expression {
 
-        private final Token name;
-        private final Expression value;
+        private final Object value;
 
-        public Assign(Token name, Expression value) {
-            this.name = name;
+        public Literal(Object value) {
             this.value = value;
         }
 
-        public Token name() {
-            return name;
-        }
-
-        public Expression value() {
+        public Object value() {
             return value;
         }
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitAssignExpression(this);
+            return visitor.visitLiteralExpression(this);
+        }
+    }
+
+    public static class Grouping extends Expression {
+
+        private final Expression expression;
+
+        public Grouping(Expression expression) {
+            this.expression = expression;
+        }
+
+        public Expression expression() {
+            return expression;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitGroupingExpression(this);
+        }
+    }
+
+    public static class Unary extends Expression {
+
+        private final Token operator;
+        private final Expression right;
+
+        public Unary(Token operator, Expression right) {
+            this.operator = operator;
+            this.right = right;
+        }
+
+        public Token operator() {
+            return operator;
+        }
+
+        public Expression right() {
+            return right;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitUnaryExpression(this);
         }
     }
 
@@ -71,63 +113,57 @@ public abstract class Expression {
         }
     }
 
-    public static class Grouping extends Expression {
+    public static class Call extends Expression {
 
-        private final Expression expression;
+        private final Expression callee;
+        private final Token paren;
+        private final List<Expression> arguments;
 
-        public Grouping(Expression expression) {
-            this.expression = expression;
+        public Call(Expression callee, Token paren, List<Expression> arguments) {
+            this.callee = callee;
+            this.paren = paren;
+            this.arguments = arguments;
         }
 
-        public Expression expression() {
-            return expression;
+        public Expression callee() {
+            return callee;
+        }
+
+        public Token paren() {
+            return paren;
+        }
+
+        public List<Expression> arguments() {
+            return arguments;
         }
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitGroupingExpression(this);
+            return visitor.visitCallExpression(this);
         }
     }
 
-    public static class Literal extends Expression {
+    public static class Assign extends Expression {
 
-        private final Object value;
+        private final Token name;
+        private final Expression value;
 
-        public Literal(Object value) {
+        public Assign(Token name, Expression value) {
+            this.name = name;
             this.value = value;
         }
 
-        public Object value() {
+        public Token name() {
+            return name;
+        }
+
+        public Expression value() {
             return value;
         }
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitLiteralExpression(this);
-        }
-    }
-
-    public static class Unary extends Expression {
-
-        private final Token operator;
-        private final Expression right;
-
-        public Unary(Token operator, Expression right) {
-            this.operator = operator;
-            this.right = right;
-        }
-
-        public Token operator() {
-            return operator;
-        }
-
-        public Expression right() {
-            return right;
-        }
-
-        @Override
-        public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitUnaryExpression(this);
+            return visitor.visitAssignExpression(this);
         }
     }
 
@@ -146,6 +182,36 @@ public abstract class Expression {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitVariableExpression(this);
+        }
+    }
+
+    public static class Logical extends Expression {
+
+        private final Expression left;
+        private final Token operator;
+        private final Expression right;
+
+        public Logical(Expression left, Token operator, Expression right) {
+            this.left = left;
+            this.operator = operator;
+            this.right = right;
+        }
+
+        public Expression left() {
+            return left;
+        }
+
+        public Token operator() {
+            return operator;
+        }
+
+        public Expression right() {
+            return right;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitLogicalExpression(this);
         }
     }
 

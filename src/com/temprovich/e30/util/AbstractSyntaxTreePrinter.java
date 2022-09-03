@@ -3,8 +3,10 @@ package com.temprovich.e30.util;
 import com.temprovich.e30.Expression;
 import com.temprovich.e30.Expression.Assign;
 import com.temprovich.e30.Expression.Binary;
+import com.temprovich.e30.Expression.Call;
 import com.temprovich.e30.Expression.Grouping;
 import com.temprovich.e30.Expression.Literal;
+import com.temprovich.e30.Expression.Logical;
 import com.temprovich.e30.Expression.Unary;
 import com.temprovich.e30.Expression.Variable;
 
@@ -36,7 +38,27 @@ public class AbstractSyntaxTreePrinter implements Expression.Visitor<String> {
     @Override
     public String visitUnaryExpression(Unary unary) {
         return parenthesize(unary.operator().lexeme(), unary.right());
-    }   
+    }
+
+    @Override
+    public String visitVariableExpression(Variable variable) {
+        return variable.name().lexeme();
+    }
+
+    @Override
+    public String visitAssignExpression(Assign assign) {
+        return parenthesize(assign.name().lexeme(), assign.value());
+    }
+
+    @Override
+    public String visitLogicalExpression(Logical statement) {
+        return parenthesize(statement.operator().lexeme(), statement.left(), statement.right());
+    }
+
+    @Override
+    public String visitCallExpression(Call statement) {
+        return parenthesize("call", statement.callee());
+    }
 
     private String parenthesize(String name, Expression... expressions) {
         StringBuilder builder = new StringBuilder();
@@ -49,15 +71,5 @@ public class AbstractSyntaxTreePrinter implements Expression.Visitor<String> {
         builder.append(")");
 
         return builder.toString();
-    }
-
-    @Override
-    public String visitVariableExpression(Variable variable) {
-        return variable.name().lexeme();
-    }
-
-    @Override
-    public String visitAssignExpression(Assign assign) {
-        return parenthesize(assign.name().lexeme(), assign.value());
     }
 }

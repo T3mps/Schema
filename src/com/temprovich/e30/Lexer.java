@@ -16,8 +16,6 @@ public final class Lexer {
     public static final String KW_IF = "if";
     public static final String KW_NULL = "null";
     public static final String KW_OR = "or";
-    @Deprecated
-    public static final String KW_PRINT = "print";
     public static final String KW_RETURN = "return";
     public static final String KW_SUPER = "super";
     public static final String KW_SELF = "self";
@@ -38,7 +36,6 @@ public final class Lexer {
         keywords.put(KW_IF, TokenType.IF);
         keywords.put(KW_NULL, TokenType.NULL);
         keywords.put(KW_OR, TokenType.OR);
-        keywords.put(KW_PRINT, TokenType.PRINT);
         keywords.put(KW_RETURN, TokenType.RETURN);
         keywords.put(KW_SUPER, TokenType.SUPER);
         keywords.put(KW_SELF, TokenType.SELF);

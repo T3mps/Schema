@@ -1,0 +1,20 @@
+{
+    "version": "0.1.0",
+        "configurations": [
+            {
+                "type": "java",
+                "name": "Launch GenerateAbstractSyntaxTree",
+                "request": "launch",
+                "mainClass": "com.temprovich.e30.util.GenerateAbstractSyntaxTree",
+                "projectName": "E30_c07b2aab"
+            },
+            {
+                "type": "java",
+                "name": "Launch E30",
+                "request": "launch",
+                "mainClass": "com.temprovich.e30.E30",
+                "projectName": "E30_c07b2aab",
+                "args": "${command:SpecifyProgramArgs}"
+            }
+        ]
+}

@@ -3,6 +3,8 @@ package com.temprovich.e30;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.temprovich.e30.error.E30RuntimeError;
+
 public class Environment {
     
     private Environment enclosing;
@@ -18,7 +20,7 @@ public class Environment {
         this.values = new HashMap<String, Object>();
     }
 
-    protected Object fetch(Token name) {
+    public Object fetch(Token name) {
         if (values.containsKey(name.lexeme())) {
             return values.get(name.lexeme());
         }
@@ -28,15 +30,21 @@ public class Environment {
             return enclosing.fetch(name);
         }
 
-        throw new E30RuntimeException(name, "Undefined variable '" + name.lexeme() + "'.");
+        throw new E30RuntimeError(name, "Undefined variable '" + name.lexeme() + "'.");
     }
 
-    protected void define(String name, Object value) {
+    public void define(String name, Object value) {
         validateIdentifier(name);
         values.put(name, value);
     }
 
-    protected void assign(Token name, Object value) {
+    void define(Environment env) {
+        for (var entry : env.values.entrySet()) {
+            define(entry.getKey(), entry.getValue());
+        }
+    }
+
+    public void assign(Token name, Object value) {
         if (values.containsKey(name.lexeme())) {
             values.put(name.lexeme(), value);
             return;
@@ -48,7 +56,7 @@ public class Environment {
             return;
         }
         
-        throw new E30RuntimeException(name, "Undefined variable '" + name.lexeme() + "'.");
+        throw new E30RuntimeError(name, "Undefined variable '" + name.lexeme() + "'.");
     }
 
     /*
@@ -59,19 +67,18 @@ public class Environment {
      */
     private void validateIdentifier(String name) {
         if (name.length() < 1) {
-            throw new E30RuntimeException("The identifier '" + name + "' is too short.");
+            throw new E30RuntimeError("The identifier '" + name + "' is too short.");
         }
         char first = name.charAt(0);
         if (!Character.isLetter(first) && first != '_' && first != '$') {
-            throw new E30RuntimeException("A valid identifier must begin with either '_', '$' or a letter.");
+            throw new E30RuntimeError("A valid identifier must begin with either '_', '$' or a letter.");
         }
         for (int i = 1; i < name.length(); i++) {
             if (!Character.isLetterOrDigit(name.charAt(i)) && name.charAt(i) != '_' && name.charAt(i) != '$' && name.charAt(i) != '-') {
-                throw new E30RuntimeException("A valid identifier may only contain letters, numbers, '_', '$' or '-'.");
+                throw new E30RuntimeError("A valid identifier may only contain letters, numbers, '_', '$' or '-'.");
             }
         }
         
-        // check for reserved words
         boolean valid = true;
         switch (name) {
             case Lexer.KW_AND      -> valid = false;
@@ -83,7 +90,6 @@ public class Environment {
             case Lexer.KW_IF       -> valid = false;
             case Lexer.KW_NULL     -> valid = false;
             case Lexer.KW_OR       -> valid = false;
-            case Lexer.KW_PRINT    -> valid = false;
             case Lexer.KW_RETURN   -> valid = false;
             case Lexer.KW_SUPER    -> valid = false;
             case Lexer.KW_SELF     -> valid = false;
@@ -93,7 +99,7 @@ public class Environment {
             default                -> valid = true;
         }
         if (!valid) {
-            throw new E30RuntimeException("The identifier '" + name + "' is a reserved word.");
+            throw new E30RuntimeError("The identifier '" + name + "' is a reserved word.");
         }
 
         // all checks passed

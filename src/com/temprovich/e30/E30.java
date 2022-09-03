@@ -8,13 +8,22 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
+import com.temprovich.e30.error.E30RuntimeError;
+
 /*
  * https://timothya.com/pdfs/crafting-interpreters.pdf
  * https://drive.google.com/file/d/0B1MogsyNAsj9elVzQWR5NWVTSVE/view?resourcekey=0-zoBDMpzTafr6toxDuQLNUg
- * 
- * Left off on chapter 9, page 133
  */
 public class E30 {
+    
+    /*
+     * Terminal exit codes
+     */
+    public static final int EXIT_CODE__SUCCESS = 0;
+    public static final int EXIT_CODE__MALFORMED_ARGS = 64;
+    public static final int EXIT_CODE__ERROR = 65;
+    public static final int EXIT_CODE__RUNTIME_ERROR = 70;
+    public static final int EXIT_CODE__ABORT = 75;
 
     private static final Interpreter interpreter = new Interpreter();
     
@@ -25,16 +34,17 @@ public class E30 {
     }
 
     public static void main(String[] args) throws IOException {
-        args = new String[] { "scripts/test.e30" };
+        // args = new String[] { "scripts/test.e30" };
         if (args.length > 1) {
             System.out.println("Usage: e30 [script]");
-            System.exit(64);
+            System.exit(EXIT_CODE__MALFORMED_ARGS);
         }
         if (args.length == 1) {
             runScript(args[0]);
-        } else {
-            runInteractive();
+            return;
         }
+        
+        runInteractive();
     }
 
     private static void runScript(String path) throws IOException {
@@ -42,15 +52,13 @@ public class E30 {
         run(new String(bytes, Charset.defaultCharset()));
 
         if (hadError) {
-            System.exit(65);
+            System.exit(EXIT_CODE__ERROR);
         }
         if (hadRuntimeError) {
-            System.exit(70);
+            System.exit(EXIT_CODE__RUNTIME_ERROR);
         }
 
-        if (hadError) {
-            System.exit(65);
-        }
+        System.exit(EXIT_CODE__SUCCESS);
     }
 
     private static void runInteractive() throws IOException {
@@ -92,7 +100,7 @@ public class E30 {
         }
     }
 
-    public static void runtimeError(E30RuntimeException error) {
+    public static void runtimeError(E30RuntimeError error) {
         System.err.println(error.getMessage() + "\n[line " + error.token().line() + "]");
         hadRuntimeError = true;
     }

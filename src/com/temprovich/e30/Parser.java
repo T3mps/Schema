@@ -1,7 +1,10 @@
 package com.temprovich.e30;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import com.temprovich.e30.error.E30ParseError;
 
 public class Parser {
     
@@ -24,12 +27,15 @@ public class Parser {
 
     private Statement declaration() {
         try {
+            if (match(TokenType.FUNCTION)) {
+                return function("function");
+            }
             if (match(TokenType.AUTO)) {
                 return autoDeclaration();
             }
 
             return statement();
-        } catch (E30ParseException e) {
+        } catch (E30ParseError e) {
             synchronize();
             return null;
         }
@@ -47,9 +53,37 @@ public class Parser {
         return new Statement.Auto(name, initializer);
     }
 
+    private Statement.Function function(String type) {
+        Token name = consume(TokenType.IDENTIFIER, "Expect " + type + " name.");
+        consume(TokenType.LEFT_PAREN, "Expect '(' after " + type + " name.");
+        List<Token> parameters = new ArrayList<Token>();
+
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                if (parameters.size() >= 255) {
+                    error(peek(), "Can't have more than 255 parameters.");
+                }
+
+                parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
+            } while (match(TokenType.COMMA));
+        }
+
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.");
+
+        consume(TokenType.LEFT_BRACE, "Expect '{' before " + type + " body.");
+        List<Statement> body = block();
+        return new Statement.Function(name, parameters, body);
+    }
+
     private Statement statement() {
-        if (match(TokenType.PRINT)) {
-            return printStatement();
+        if (match(TokenType.FOR)) {
+            return forStatement();
+        }
+        if (match(TokenType.IF)) {
+            return ifStatement();
+        }
+        if (match(TokenType.WHILE)) {
+            return whileStatement();
         }
         if (match(TokenType.LEFT_BRACE)) {
             return new Statement.Block(block());
@@ -64,10 +98,78 @@ public class Parser {
         return new Statement.Expr(expression);
     }
 
-    private Statement printStatement() {
-        Expression expression = expression();
-        consume(TokenType.SEMICOLON, "Expect ';' after value.");
-        return new Statement.Print(expression);
+    private Statement forStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.");
+
+        Statement initializer;
+        if (match(TokenType.SEMICOLON)) {
+            initializer = null;
+        } else if (match(TokenType.AUTO)) {
+            initializer = autoDeclaration();
+        } else {
+            initializer = expressionStatement();
+        }
+
+        Expression condition = null;
+        if (!check(TokenType.SEMICOLON)) {
+            condition = expression();
+        }
+
+        consume(TokenType.SEMICOLON, "Expect ';' after loop condition.");
+
+        Expression increment = null;
+        if (!check(TokenType.RIGHT_PAREN)) {
+            increment = expression();
+        }
+
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        Statement body = statement();
+
+        if (increment != null) {
+            body = new Statement.Block(
+                Arrays.asList(
+                    body,
+                    new Statement.Expr(increment)
+                )
+            );
+        }
+
+        if (condition == null) {
+            condition = new Expression.Literal(true);
+        }
+        body = new Statement.While(condition, body);
+
+        if (initializer != null) {
+            body = new Statement.Block(
+                Arrays.asList(
+                    initializer,
+                    body
+                )
+            );
+        }
+
+        return body;
+    }
+
+    private Statement ifStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");
+        Expression condition = expression();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.");
+
+        Statement thenBranch = statement();
+        Statement elseBranch = match(TokenType.ELSE) ? statement() : null;
+
+        return new Statement.If(condition, thenBranch, elseBranch);
+    }
+
+    private Statement whileStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+        Expression condition = expression();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
+        Statement body = statement();
+
+        return new Statement.While(condition, body);
     }
 
     private List<Statement> block() {
@@ -86,7 +188,7 @@ public class Parser {
     }
 
     private Expression assignment() {
-        Expression expression = equality();
+        Expression expression = or();
 
         if (match(TokenType.EQUAL)) {
             Token equals = previous();
@@ -110,6 +212,30 @@ public class Parser {
             Token operator = previous();
             Expression right = comparison();
             expression = new Expression.Binary(expression, operator, right);
+        }
+
+        return expression;
+    }
+
+    private Expression or() {
+        Expression expression = and();
+
+        while (match(TokenType.OR)) {
+            Token operator = previous();
+            Expression right = and();
+            expression = new Expression.Logical(expression, operator, right);
+        }
+
+        return expression;
+    }
+
+    private Expression and() {
+        Expression expression = equality();
+
+        while (match(TokenType.AND)) {
+            Token operator = previous();
+            Expression right = equality();
+            expression = new Expression.Logical(expression, operator, right);
         }
 
         return expression;
@@ -158,7 +284,39 @@ public class Parser {
             return new Expression.Unary(operator, right);
         }
 
-        return primary();
+        return call();
+    }
+
+    private Expression call() {
+        Expression expression = primary();
+
+        for (;;) {
+            if (match(TokenType.LEFT_PAREN)) {
+                expression = finalizeCall(expression);
+            } else {
+                break;
+            }
+        }
+
+        return expression;
+    }
+
+    private Expression finalizeCall(Expression callee) {
+        List<Expression> arguments = new ArrayList<Expression>();
+
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                if (arguments.size() >= 255) {
+                    error(peek(), "Cannot have more than 255 arguments.");
+                }
+
+                arguments.add(expression());
+            } while (match(TokenType.COMMA));
+        }
+
+        Token paren = consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.");
+
+        return new Expression.Call(callee, paren, arguments);
     }
 
     private Expression primary() {
@@ -201,12 +359,13 @@ public class Parser {
                 case FOR:
                 case IF:
                 case WHILE:
-                case PRINT:
                 case RETURN:
                     return;
+                default:
+                    advance();
             }
 
-            advance();
+            // advance();
         }
     }
 
@@ -218,9 +377,9 @@ public class Parser {
         throw error(peek(), message);
     }
 
-    private E30ParseException error(Token token, String message) {
+    private E30ParseError error(Token token, String message) {
         E30.error(token, message);
-        return new E30ParseException(token, message);
+        return new E30ParseError(token, message);
     }
 
     private boolean match(TokenType... types) {

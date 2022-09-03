@@ -1,21 +1,53 @@
 package com.temprovich.e30;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.temprovich.e30.Expression.Assign;
+import com.temprovich.e30.Expression.Call;
+import com.temprovich.e30.Expression.Logical;
 import com.temprovich.e30.Expression.Variable;
 import com.temprovich.e30.Statement.Auto;
 import com.temprovich.e30.Statement.Block;
 import com.temprovich.e30.Statement.Expr;
-import com.temprovich.e30.Statement.Print;
+import com.temprovich.e30.Statement.Function;
+import com.temprovich.e30.Statement.If;
+import com.temprovich.e30.Statement.While;
+import com.temprovich.e30.error.E30RuntimeError;
+import com.temprovich.e30.preinclude.E30Native_Base;
+import com.temprovich.e30.preinclude.E30Native_Internal;
+import com.temprovich.e30.preinclude.E30Native_Math;
 
 public class Interpreter implements Expression.Visitor<Object>,
                                     Statement.Visitor<Void> {
 
+    private final Environment globals = new Environment();
+
     private Environment environment;
 
     public Interpreter() {
-        this.environment = new Environment();
+        // temporary
+            globals.define(E30Native_Internal.getEnvironment());
+            globals.define(E30Native_Base.getEnvironment());
+            globals.define(E30Native_Math.getEnvironment());
+        
+        this.environment = globals;
+    }
+
+    public static String stringify(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof Double) {
+            String string = value.toString();
+            if (string.endsWith(".0")) {
+                return string.substring(0, string.length() - 2);
+            }
+
+            return string;
+        }
+
+        return value.toString();
     }
     
     public void interpret(List<Statement> statements) {
@@ -23,7 +55,7 @@ public class Interpreter implements Expression.Visitor<Object>,
             for (var statement : statements) {
                 execute(statement);
             }
-        } catch (E30RuntimeException error) {
+        } catch (E30RuntimeError error) {
             E30.runtimeError(error);
         }
     }
@@ -49,7 +81,7 @@ public class Interpreter implements Expression.Visitor<Object>,
         switch (expression.operator().type()) {
             case MINUS: return -(double) right;
             case BANG: return !predicate(right);
-            default: throw new IllegalArgumentException("unknown operator");
+            default: throw new E30RuntimeError("unknown operator");
         }
     }
 
@@ -87,7 +119,7 @@ public class Interpreter implements Expression.Visitor<Object>,
                     return stringify(left) + (String) right;
                 }
 
-                throw new E30RuntimeException(expression.operator(), "Operands must be two numbers or two strings."); // throw an error if the attempted operation is neither addition nor concatenation
+                throw new E30RuntimeError(expression.operator(), "Operands must be two numbers or two strings."); // throw an error if the attempted operation is neither addition nor concatenation
             case SLASH:
                 validateArithmeticExpression(expression.operator(), left, right);
                 return (double) left / (double) right;
@@ -95,53 +127,108 @@ public class Interpreter implements Expression.Visitor<Object>,
                 validateArithmeticExpression(expression.operator(), left, right);
                 return (double) left * (double) right;
             default:
-                throw new IllegalArgumentException("unknown operator");
+                throw new E30RuntimeError("unknown operator");
         }
     }
 
     @Override
-    public Void visitExprStatement(Expr expr) {
-        evaluate(expr.expression());
+    public Void visitExprStatement(Expr statement) {
+        evaluate(statement.expression());
         return null;
     }
-
+    
     @Override
-    public Void visitPrintStatement(Print print) {
-        var value = evaluate(print.expression());
-        System.out.println(stringify(value));
-        return null;
-    }
-
-    @Override
-    public Void visitAutoStatement(Auto auto) {
+    public Void visitAutoStatement(Auto statement) {
         Object value = null;
-        if (auto.value() != null) {
-            value = evaluate(auto.value());
+        if (statement.value() != null) {
+            value = evaluate(statement.value());
         }
 
-        environment.define(auto.name().lexeme(), value);
+        environment.define(statement.name().lexeme(), value);
         return null;
     }
 
     @Override
-    public Object visitVariableExpression(Variable variable) {
-        return environment.fetch(variable.name());
+    public Object visitVariableExpression(Variable expression) {
+        return environment.fetch(expression.name());
     }
 
     @Override
-    public Object visitAssignExpression(Assign assign) {
-        Object value = evaluate(assign.value());
-        environment.assign(assign.name(), value);
+    public Object visitAssignExpression(Assign expression) {
+        Object value = evaluate(expression.value());
+        environment.assign(expression.name(), value);
         return value;
     }
 
     @Override
-    public Void visitBlockStatement(Block block) {
-        executeBlock(block.statements(), new Environment(environment));
+    public Void visitBlockStatement(Block statement) {
+        executeBlock(statement.statements(), new Environment(environment));
         return null;
     }
 
-    private void executeBlock(List<Statement> statements, Environment environment) {
+    @Override
+    public Void visitIfStatement(If statement) {
+        if (predicate(evaluate(statement.condition()))) {
+            execute(statement.thenBranch());
+        } else if (statement.elseBranch() != null) {
+            execute(statement.elseBranch());
+        }
+
+        return null;
+    }
+
+    @Override
+    public Object visitLogicalExpression(Logical statement) {
+        Object left = evaluate(statement.left());
+        
+        if (statement.operator().type() == TokenType.OR) {
+            if (predicate(left)) return left;
+        } else {
+            if (!predicate(left)) return left;
+        }
+
+        return evaluate(statement.right());
+    }
+
+    @Override
+    public Void visitWhileStatement(While statement) {
+        while (predicate(evaluate(statement.condition()))) {
+            execute(statement.body());
+        }
+
+        return null;
+    }
+
+    @Override
+    public Object visitCallExpression(Call expression) {
+        var callee = evaluate(expression.callee());
+
+        List<Object> arguments = new ArrayList<Object>();
+        for (Expression argument : expression.arguments()) {
+            arguments.add(evaluate(argument));
+        }
+
+        if (!(callee instanceof E30Callable)) {
+            throw new E30RuntimeError(expression.paren(), "Can only call functions and classes.");
+        }
+
+        E30Callable function = (E30Callable) callee;
+
+        if (arguments.size() != function.arity()) {
+            throw new E30RuntimeError(expression.paren(), "Function received " + arguments.size() + " arguments, but expects " + function.arity() + ".");
+        }
+
+        return function.call(this, arguments);
+    }
+
+    @Override
+    public Void visitFunctionStatement(Function statement) {
+        E30Function function = new E30Function(statement);
+        environment.define(statement.name().lexeme(), function);
+        return null;
+    }
+
+    void executeBlock(List<Statement> statements, Environment environment) {
         Environment previous = this.environment;
         try {
             this.environment = environment;
@@ -165,6 +252,9 @@ public class Interpreter implements Expression.Visitor<Object>,
         if (obj instanceof Boolean) {
             return (boolean) obj;
         }
+        if (obj instanceof Double) {
+            return (double) obj != 0;
+        }
         return true;
     }
 
@@ -183,22 +273,10 @@ public class Interpreter implements Expression.Visitor<Object>,
             return;
         }
         
-        throw new E30RuntimeException(operator, "Malformed expression detected: attempted to operate on " + left.getClass().getName() + ", " + right.getClass().getName() + " with operator " + operator.type());
+        throw new E30RuntimeError(operator, "Malformed expression detected: attempted to operate on " + left.getClass().getName() + ", " + right.getClass().getName() + " with operator " + operator.type());
     }
 
-    private String stringify(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof Double) {
-            String string = value.toString();
-            if (string.endsWith(".0")) {
-                return string.substring(0, string.length() - 2);
-            }
-
-            return string;
-        }
-
-        return value.toString();
+    public Environment getGlobals() {
+        return globals;
     }
 }

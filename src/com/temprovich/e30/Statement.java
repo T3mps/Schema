@@ -6,13 +6,17 @@ public abstract class Statement {
 
     public interface Visitor<R> {
 
-        public abstract R visitBlockStatement(Block block);
+        public abstract R visitBlockStatement(Block statement);
 
-        public abstract R visitExprStatement(Expr expr);
+        public abstract R visitExprStatement(Expr statement);
 
-        public abstract R visitPrintStatement(Print print);
+        public abstract R visitFunctionStatement(Function statement);
 
-        public abstract R visitAutoStatement(Auto auto);
+        public abstract R visitIfStatement(If statement);
+
+        public abstract R visitAutoStatement(Auto statement);
+
+        public abstract R visitWhileStatement(While statement);
     }
 
     public static class Block extends Statement {
@@ -51,21 +55,63 @@ public abstract class Statement {
         }
     }
 
-    public static class Print extends Statement {
+    public static class Function extends Statement {
 
-        private final Expression expression;
+        private final Token name;
+        private final List<Token> parameters;
+        private final List<Statement> body;
 
-        public Print(Expression expression) {
-            this.expression = expression;
+        public Function(Token name, List<Token> parameters, List<Statement> body) {
+            this.name = name;
+            this.parameters = parameters;
+            this.body = body;
         }
 
-        public Expression expression() {
-            return expression;
+        public Token name() {
+            return name;
+        }
+
+        public List<Token> parameters() {
+            return parameters;
+        }
+
+        public List<Statement> body() {
+            return body;
         }
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitPrintStatement(this);
+            return visitor.visitFunctionStatement(this);
+        }
+    }
+
+    public static class If extends Statement {
+
+        private final Expression condition;
+        private final Statement thenBranch;
+        private final Statement elseBranch;
+
+        public If(Expression condition, Statement thenBranch, Statement elseBranch) {
+            this.condition = condition;
+            this.thenBranch = thenBranch;
+            this.elseBranch = elseBranch;
+        }
+
+        public Expression condition() {
+            return condition;
+        }
+
+        public Statement thenBranch() {
+            return thenBranch;
+        }
+
+        public Statement elseBranch() {
+            return elseBranch;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitIfStatement(this);
         }
     }
 
@@ -90,6 +136,30 @@ public abstract class Statement {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitAutoStatement(this);
+        }
+    }
+
+    public static class While extends Statement {
+
+        private final Expression condition;
+        private final Statement body;
+
+        public While(Expression condition, Statement body) {
+            this.condition = condition;
+            this.body = body;
+        }
+
+        public Expression condition() {
+            return condition;
+        }
+
+        public Statement body() {
+            return body;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitWhileStatement(this);
         }
     }
 
