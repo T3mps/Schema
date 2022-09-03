@@ -34,7 +34,8 @@ public class GenerateAbstractSyntaxTree {
             "Function : Token name, List<Token> parameters, List<Statement> body",
             "If       : Expression condition, Statement thenBranch, Statement elseBranch",
             "Auto     : Token name, Expression value",
-            "While    : Expression condition, Statement body"
+            "While    : Expression condition, Statement body",
+            "Return   : Token keyword, Expression value"
         ));
     }
     

@@ -17,6 +17,8 @@ public abstract class Statement {
         public abstract R visitAutoStatement(Auto statement);
 
         public abstract R visitWhileStatement(While statement);
+
+        public abstract R visitReturnStatement(Return statement);
     }
 
     public static class Block extends Statement {
@@ -160,6 +162,30 @@ public abstract class Statement {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitWhileStatement(this);
+        }
+    }
+
+    public static class Return extends Statement {
+
+        private final Token keyword;
+        private final Expression value;
+
+        public Return(Token keyword, Expression value) {
+            this.keyword = keyword;
+            this.value = value;
+        }
+
+        public Token keyword() {
+            return keyword;
+        }
+
+        public Expression value() {
+            return value;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitReturnStatement(this);
         }
     }
 

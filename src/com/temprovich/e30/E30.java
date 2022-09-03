@@ -27,14 +27,14 @@ public class E30 {
 
     private static final Interpreter interpreter = new Interpreter();
     
-    static boolean hadError = false;
-    static boolean hadRuntimeError = false;
+    private static boolean hadError = false;
+    private static boolean hadRuntimeError = false;
 
     private E30 () {
+        throw new AssertionError("No instances of E30");
     }
 
     public static void main(String[] args) throws IOException {
-        // args = new String[] { "scripts/test.e30" };
         if (args.length > 1) {
             System.out.println("Usage: e30 [script]");
             System.exit(EXIT_CODE__MALFORMED_ARGS);

@@ -6,15 +6,16 @@
                 "name": "Launch GenerateAbstractSyntaxTree",
                 "request": "launch",
                 "mainClass": "com.temprovich.e30.util.GenerateAbstractSyntaxTree",
-                "projectName": "E30_c07b2aab"
+                "projectName": "E30_634e1828"
             },
             {
                 "type": "java",
                 "name": "Launch E30",
                 "request": "launch",
                 "mainClass": "com.temprovich.e30.E30",
-                "projectName": "E30_c07b2aab",
-                "args": "${command:SpecifyProgramArgs}"
+                "projectName": "E30_634e1828",
+                "args": "${command:SpecifyProgramArgs}",
+                "console": "externalTerminal"
             }
         ]
 }

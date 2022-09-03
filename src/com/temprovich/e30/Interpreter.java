@@ -14,42 +14,32 @@ import com.temprovich.e30.Statement.Function;
 import com.temprovich.e30.Statement.If;
 import com.temprovich.e30.Statement.While;
 import com.temprovich.e30.error.E30RuntimeError;
-import com.temprovich.e30.preinclude.E30Native_Base;
-import com.temprovich.e30.preinclude.E30Native_Internal;
-import com.temprovich.e30.preinclude.E30Native_Math;
+import com.temprovich.e30.preinclude.E30NativeBase;
+import com.temprovich.e30.preinclude.E30NativeInternal;
+import com.temprovich.e30.preinclude.E30NativeMath;
+import com.temprovich.e30.preinclude.Preinclude;
 
 public class Interpreter implements Expression.Visitor<Object>,
                                     Statement.Visitor<Void> {
 
-    private final Environment globals = new Environment();
+    private static Preinclude[] preincluded = new Preinclude[] {
+        new E30NativeInternal(),
+        new E30NativeBase(),
+        new E30NativeMath(), // TODO: move to import statement
+    };
+
+    private final Environment globals;
 
     private Environment environment;
 
     public Interpreter() {
-        // temporary
-            globals.define(E30Native_Internal.getEnvironment());
-            globals.define(E30Native_Base.getEnvironment());
-            globals.define(E30Native_Math.getEnvironment());
-        
+        this.globals = new Environment();
+        for (var preinclude : preincluded) {
+            preinclude.inject(globals);
+        }
         this.environment = globals;
     }
 
-    public static String stringify(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof Double) {
-            String string = value.toString();
-            if (string.endsWith(".0")) {
-                return string.substring(0, string.length() - 2);
-            }
-
-            return string;
-        }
-
-        return value.toString();
-    }
-    
     public void interpret(List<Statement> statements) {
         try {
             for (var statement : statements) {
@@ -60,8 +50,37 @@ public class Interpreter implements Expression.Visitor<Object>,
         }
     }
 
-    private void execute(Statement statement) {
-        statement.accept(this);
+    /*
+     * Determines the type of an object and returns the appropriate string
+     */
+    public <T> String typeOf(T object) {
+        if (object == null) {
+            return "null";
+        } else if (object instanceof Boolean) {
+            return "bool";
+        } else if (object instanceof Double) {
+            if (((Double) object).intValue() == (Double) object) {
+                return "int";
+            } else {
+                return "float";
+            }
+        } else if (object instanceof String) {
+            return "string";
+        } else if (object instanceof E30Callable) {
+            return "function";
+        }
+        
+        return "?";
+    }
+
+    public boolean is(Object object0, Object object1) {
+        if (object0 == null && object1 == null) {
+            return true;
+        } else if (object0 == null) {
+            return false;
+        } else {
+            return typeOf(object0).equals(typeOf(object1));
+        }
     }
 
     @Override
@@ -223,12 +242,22 @@ public class Interpreter implements Expression.Visitor<Object>,
 
     @Override
     public Void visitFunctionStatement(Function statement) {
-        E30Function function = new E30Function(statement);
+        E30Function function = new E30Function(statement, environment);
         environment.define(statement.name().lexeme(), function);
         return null;
     }
 
-    void executeBlock(List<Statement> statements, Environment environment) {
+    @Override
+    public Void visitReturnStatement(Statement.Return statement) {
+        Object value = null;
+        if (statement.value() != null) {
+            value = evaluate(statement.value());
+        }
+
+        throw new com.temprovich.e30.Return(value);
+    }
+
+    protected void executeBlock(List<Statement> statements, Environment environment) {
         Environment previous = this.environment;
         try {
             this.environment = environment;
@@ -239,6 +268,10 @@ public class Interpreter implements Expression.Visitor<Object>,
         } finally {
             this.environment = previous;
         }
+    }
+
+    private void execute(Statement statement) {
+        statement.accept(this);
     }
 
     private Object evaluate(Expression expression) {
@@ -274,6 +307,22 @@ public class Interpreter implements Expression.Visitor<Object>,
         }
         
         throw new E30RuntimeError(operator, "Malformed expression detected: attempted to operate on " + left.getClass().getName() + ", " + right.getClass().getName() + " with operator " + operator.type());
+    }
+
+    public static String stringify(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof Double) {
+            String string = value.toString();
+            if (string.endsWith(".0")) {
+                return string.substring(0, string.length() - 2);
+            }
+
+            return string;
+        }
+
+        return value.toString();
     }
 
     public Environment getGlobals() {
