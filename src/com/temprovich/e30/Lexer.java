@@ -8,7 +8,7 @@ import java.util.Map;
 public final class Lexer {
 
     public static final String KW_AND = "and";
-    public static final String KW_CLASS = "class";
+    public static final String KW_NODE = "node";
     public static final String KW_ELSE = "else";
     public static final String KW_FALSE = "false";
     public static final String KW_FOR = "for";
@@ -17,18 +17,22 @@ public final class Lexer {
     public static final String KW_NULL = "null";
     public static final String KW_OR = "or";
     public static final String KW_RETURN = "return";
-    public static final String KW_SUPER = "super";
+    public static final String KW_PARENT = "parent";
     public static final String KW_SELF = "self";
     public static final String KW_TRUE = "true";
     public static final String KW_AUTO = "auto";
     public static final String KW_WHILE = "while";
+    public static final String KW_BREAK = "break";
+    public static final String KW_CONTINUE = "continue";
+    public static final String KW_TRAIT = "trait";
+    public static final String KW_WITH = "with";
 
     private static final Map<String, TokenType> keywords;
 
     static {
         keywords = new HashMap<String, TokenType>();
         keywords.put(KW_AND, TokenType.AND);
-        keywords.put(KW_CLASS, TokenType.CLASS);
+        keywords.put(KW_NODE, TokenType.NODE);
         keywords.put(KW_ELSE, TokenType.ELSE);
         keywords.put(KW_FALSE, TokenType.FALSE);
         keywords.put(KW_FOR, TokenType.FOR);
@@ -37,11 +41,15 @@ public final class Lexer {
         keywords.put(KW_NULL, TokenType.NULL);
         keywords.put(KW_OR, TokenType.OR);
         keywords.put(KW_RETURN, TokenType.RETURN);
-        keywords.put(KW_SUPER, TokenType.SUPER);
+        keywords.put(KW_PARENT, TokenType.PARENT);
         keywords.put(KW_SELF, TokenType.SELF);
         keywords.put(KW_TRUE, TokenType.TRUE);
         keywords.put(KW_AUTO, TokenType.AUTO);
         keywords.put(KW_WHILE, TokenType.WHILE);
+        keywords.put(KW_BREAK, TokenType.BREAK);
+        keywords.put(KW_CONTINUE, TokenType.CONTINUE);
+        keywords.put(KW_TRAIT, TokenType.TRAIT);
+        keywords.put(KW_WITH, TokenType.WITH);
     }
     
     private final String source;
@@ -79,6 +87,7 @@ public final class Lexer {
             case '+': addToken(TokenType.PLUS); break;
             case ';': addToken(TokenType.SEMICOLON); break;
             case '*': addToken(TokenType.STAR); break;
+            case ':': addToken(TokenType.COLON); break;
             case '!': addToken(match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
             case '=': addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
             case '<': addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;

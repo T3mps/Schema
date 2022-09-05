@@ -66,7 +66,7 @@ public class E30 {
         BufferedReader reader = new BufferedReader(in);
 
         for (;;) {
-            System.out.print("> ");
+            System.out.print(">\s");
             String line = reader.readLine();
             if (line == null) {
                 break;
@@ -80,6 +80,13 @@ public class E30 {
         List<Token> tokens = lexer.tokenize();
         Parser parser = new Parser(tokens);
         List<Statement> statements = parser.parse();
+
+        if (hadError) {
+            return;
+        }
+
+        SemanticResolver resolver = new SemanticResolver(interpreter);
+        resolver.resolve(statements);
 
         if (hadError) {
             return;

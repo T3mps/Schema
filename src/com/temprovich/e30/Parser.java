@@ -10,6 +10,7 @@ public class Parser {
     
     private final List<Token> tokens;
     private int current = 0;
+    private int loopDepth = 0;
 
     public Parser(List<Token> tokens) {
         this.tokens = tokens;
@@ -27,7 +28,16 @@ public class Parser {
 
     private Statement declaration() {
         try {
+            if (match(TokenType.NODE)) {
+                return nodeDeclaration();
+            }
+            if (match(TokenType.TRAIT)) {
+                return traitDeclaration();
+            }
             if (match(TokenType.FUNCTION)) {
+                if (check(TokenType.FUNCTION) && checkNext(TokenType.IDENTIFIER)) {
+                    consume(TokenType.FUNCTION, null);
+                }
                 return function("function");
             }
             if (match(TokenType.AUTO)) {
@@ -39,6 +49,59 @@ public class Parser {
             synchronize();
             return null;
         }
+    }
+
+    private Statement nodeDeclaration() {
+        Token name = consume(TokenType.IDENTIFIER, "Expect node name.");
+
+        Expression.Variable parent = null;
+        if (match(TokenType.COLON)) {
+            consume(TokenType.IDENTIFIER, "Expect parent node name.");
+            parent = new Expression.Variable(previous());
+        }
+
+        List<Expression> traits = withClause();
+
+        List<Statement.Function> methods = new ArrayList<Statement.Function>();
+        List<Statement.Function> metaMethods = new ArrayList<Statement.Function>();
+        consume(TokenType.LEFT_BRACE, "Expect '{' to lead node body.");
+
+        while (!check(TokenType.RIGHT_BRACE) && !atEnd()) {
+            boolean isMeta = match(TokenType.NODE);
+            (isMeta ? metaMethods : methods).add(function("method"));
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' to close node body.");
+
+        return new Statement.Node(name, parent, traits, methods, metaMethods);
+    }
+
+    private Statement traitDeclaration() {
+        Token name = consume(TokenType.IDENTIFIER, "Expect trait name.");
+        List<Expression> traits = withClause();
+
+        consume(TokenType.LEFT_BRACE, "Expect '{' to lead trait body.");
+
+        List<Statement.Function> methods = new ArrayList<Statement.Function>();
+        while (!check(TokenType.RIGHT_BRACE) && !atEnd()) {
+            methods.add(function("method"));
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' to close trait body.");
+
+        return new Statement.Trait(name, traits, methods);
+    }
+
+    private List<Expression> withClause() {
+        List<Expression> traits = new ArrayList<Expression>();
+        if (match(TokenType.WITH)) {
+            do {
+                consume(TokenType.IDENTIFIER, "Expect trait name.");
+                traits.add(new Expression.Variable(previous()));
+            } while (match(TokenType.COMMA));
+        }
+
+        return traits;
     }
 
     private Statement autoDeclaration() {
@@ -55,24 +118,30 @@ public class Parser {
 
     private Statement.Function function(String type) {
         Token name = consume(TokenType.IDENTIFIER, "Expect " + type + " name.");
-        consume(TokenType.LEFT_PAREN, "Expect '(' after " + type + " name.");
-        List<Token> parameters = new ArrayList<Token>();
+        return new Statement.Function(name, functionBody(type));
+    }
 
-        if (!check(TokenType.RIGHT_PAREN)) {
-            do {
-                if (parameters.size() >= 255) {
-                    error(peek(), "Can't have more than 255 parameters.");
-                }
-
-                parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
-            } while (match(TokenType.COMMA));
+    private Expression.Function functionBody(String type) {
+        List<Token> parameters = null;
+        
+        if (!type.equals("method") || check(TokenType.LEFT_PAREN)) {
+            consume(TokenType.LEFT_PAREN, "Expect '(' after " + type + " name.");
+            parameters = new ArrayList<Token>();
+            if (!check(TokenType.RIGHT_PAREN)) {
+                do {
+                    if (parameters.size() >= 255) {
+                        error(peek(), "Can't have more than 255 parameters.");
+                    }
+    
+                    parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
+                } while (match(TokenType.COMMA));
+            }
+            consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.");
         }
-
-        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.");
 
         consume(TokenType.LEFT_BRACE, "Expect '{' before " + type + " body.");
         List<Statement> body = block();
-        return new Statement.Function(name, parameters, body);
+        return new Expression.Function(parameters, body);
     }
 
     private Statement statement() {
@@ -87,6 +156,12 @@ public class Parser {
         }
         if (match(TokenType.RETURN)) {
             return returnStatement();
+        }
+        if (match(TokenType.BREAK)) {
+            return breakStatement();
+        }
+        if (match(TokenType.CONTINUE)) {
+            return continueStatement();
         }
         if (match(TokenType.LEFT_BRACE)) {
             return new Statement.Block(block());
@@ -127,32 +202,37 @@ public class Parser {
 
         consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.");
 
-        Statement body = statement();
+        try {
+            loopDepth++;
+            Statement body = statement();
 
-        if (increment != null) {
-            body = new Statement.Block(
-                Arrays.asList(
-                    body,
-                    new Statement.Expr(increment)
-                )
-            );
+            if (increment != null) {
+                body = new Statement.Block(
+                    Arrays.asList(
+                        body,
+                        new Statement.Expr(increment)
+                    )
+                );
+            }
+    
+            if (condition == null) {
+                condition = new Expression.Literal(true);
+            }
+            body = new Statement.While(condition, body);
+    
+            if (initializer != null) {
+                body = new Statement.Block(
+                    Arrays.asList(
+                        initializer,
+                        body
+                    )
+                );
+            }
+    
+            return body;
+        } finally {
+            loopDepth--;
         }
-
-        if (condition == null) {
-            condition = new Expression.Literal(true);
-        }
-        body = new Statement.While(condition, body);
-
-        if (initializer != null) {
-            body = new Statement.Block(
-                Arrays.asList(
-                    initializer,
-                    body
-                )
-            );
-        }
-
-        return body;
     }
 
     private Statement ifStatement() {
@@ -170,9 +250,15 @@ public class Parser {
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
         Expression condition = expression();
         consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
-        Statement body = statement();
+        
+        try {
+            loopDepth++;
+            Statement body = statement();
 
-        return new Statement.While(condition, body);
+            return new Statement.While(condition, body);
+        } finally {
+            loopDepth--;
+        }
     }
 
     private Statement returnStatement() {
@@ -184,6 +270,22 @@ public class Parser {
 
         consume(TokenType.SEMICOLON, "Expect ';' after return value.");
         return new Statement.Return(keyword, value);
+    }
+
+    private Statement breakStatement() {
+        if (loopDepth == 0) {
+            error(previous(), "Can not break outside of a loop.");
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after break.");
+        return new Statement.Break();
+    }
+
+    private Statement continueStatement() {
+        if (loopDepth == 0) {
+            error(previous(), "Can not continue to next iteration outside of a loop.");
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after continue.");
+        return new Statement.Continue();
     }
 
     private List<Statement> block() {
@@ -211,6 +313,9 @@ public class Parser {
             if (expression instanceof Expression.Variable) {
                 Token name = ((Expression.Variable) expression).name();
                 return new Expression.Assign(name, value);
+            } else if (expression instanceof Expression.Attribute) {
+                Expression.Attribute attribute = (Expression.Attribute) expression;
+                return new Expression.Set(attribute.object(), attribute.name(), value);
             }
 
             error(equals, "Invalid assignment target.");
@@ -307,6 +412,9 @@ public class Parser {
         for (;;) {
             if (match(TokenType.LEFT_PAREN)) {
                 expression = finalizeCall(expression);
+            } else if (match(TokenType.DOT)) {
+                Token name = consume(TokenType.IDENTIFIER, "Expect attribute name after '.'.");
+                expression = new Expression.Attribute(expression, name);
             } else {
                 break;
             }
@@ -346,8 +454,20 @@ public class Parser {
         if (match(TokenType.NUMBER, TokenType.STRING)) {
             return new Expression.Literal(previous().literal());
         }
+        if (match(TokenType.PARENT)) {
+            Token keyword = previous();
+            consume(TokenType.DOT, "Expect '.' after 'parent'.");
+            Token method = consume(TokenType.IDENTIFIER, "Expect parent method name.");
+            return new Expression.Parent(keyword, method);
+        }
+        if (match(TokenType.SELF)) {
+            return new Expression.Self(previous());
+        }
         if (match(TokenType.IDENTIFIER)) {
             return new Expression.Variable(previous());
+        }
+        if (match(TokenType.FUNCTION)) {
+            return functionBody("function");
         }
         if (match(TokenType.LEFT_PAREN)) {
             Expression expression = expression();
@@ -367,7 +487,7 @@ public class Parser {
             }
 
             switch (peek().type()) {
-                case CLASS:
+                case NODE:
                 case FUNCTION:
                 case AUTO:
                 case FOR:
@@ -378,8 +498,6 @@ public class Parser {
                 default:
                     advance();
             }
-
-            // advance();
         }
     }
 
@@ -413,6 +531,16 @@ public class Parser {
         }
         
         return peek().type() == type;
+    }
+
+    private boolean checkNext(TokenType type) {
+        if (atEnd()) {
+            return false;
+        }
+        if (tokens.get(current + 1).type() == TokenType.EOF) {
+            return false;
+        }
+        return tokens.get(current + 1).type() == type;
     }
 
     private Token advance() {

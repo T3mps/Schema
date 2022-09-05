@@ -19,23 +19,32 @@ public class GenerateAbstractSyntaxTree {
         String outputDir = "src/com/temprovich/e30";
         define(outputDir, "Expression", Arrays.asList(
             "Literal  : Object value",
-            "Grouping : Expression expression",
-            "Unary    : Token operator, Expression right",
-            "Binary   : Expression left, Token operator, Expression right",
-            "Call     : Expression callee, Token paren, List<Expression> arguments",
-            "Assign   : Token name, Expression value",
-            "Variable : Token name",
-            "Logical  : Expression left, Token operator, Expression right"
+            "Grouping  : Expression expression",
+            "Variable  : Token name",
+            "Assign    : Token name, Expression value",
+            "Unary     : Token operator, Expression right",
+            "Binary    : Expression left, Token operator, Expression right",
+            "Logical   : Expression left, Token operator, Expression right",
+            "Call      : Expression callee, Token paren, List<Expression> arguments",
+            "Function  : List<Token> parameters, List<Statement> body",
+            "Attribute : Expression object, Token name",
+            "Set       : Expression object, Token name, Expression value",
+            "Self      : Token keyword",
+            "Parent    : Token keyword, Token method"
         ));
 
         define(outputDir, "Statement", Arrays.asList(
-            "Block : List<Statement> statements",
+            "Block    : List<Statement> statements",
             "Expr     : Expression expression",
-            "Function : Token name, List<Token> parameters, List<Statement> body",
-            "If       : Expression condition, Statement thenBranch, Statement elseBranch",
+            "Node     : Token name, Expression.Variable parent, List<Expression> traits, List<Statement.Function> methods, List<Statement.Function> metaMethods",
+            "Trait    : Token name, List<Expression> traits, List<Statement.Function> methods",
+            "Function : Token name, Expression.Function function",
             "Auto     : Token name, Expression value",
+            "If       : Expression condition, Statement thenBranch, Statement elseBranch",
+            "Return   : Token keyword, Expression value",
             "While    : Expression condition, Statement body",
-            "Return   : Token keyword, Expression value"
+            "Break    : ",
+            "Continue : "
         ));
     }
     
@@ -72,7 +81,12 @@ public class GenerateAbstractSyntaxTree {
         
         // Fields
         writer.println();
-        String[] fieldNames = fields.split(", ");
+        String[] fieldNames;
+        if (fields.isEmpty()) {
+            fieldNames = new String[0];
+        } else {
+            fieldNames = fields.split(", ");
+        }
         for (String fieldName : fieldNames) {
             writer.println(INDENT + INDENT + "private final " + fieldName + ";");
         }
@@ -104,7 +118,7 @@ public class GenerateAbstractSyntaxTree {
         writer.println();
         writer.println(INDENT + INDENT + "@Override");
         writer.println(INDENT + INDENT + "public <R> R accept(Visitor<R> visitor) {");
-        writer.println(INDENT + INDENT + INDENT + "return visitor.visit" + className + baseName + "(this);");
+        writer.println(INDENT + INDENT + INDENT + "return visitor.visit(this);");
         writer.println(INDENT + INDENT + "}");
         
         writer.println(INDENT + "}");
@@ -116,7 +130,7 @@ public class GenerateAbstractSyntaxTree {
         for (String type : types) {
             String className = type.split(":")[0].trim();
             writer.println();
-            writer.println(INDENT + INDENT + "public abstract R visit" + className + baseName + "(" + className + " statement);");
+            writer.println(INDENT + INDENT + "public abstract R visit(" + className + " " + baseName.toLowerCase() + ");");
         }
         writer.println(INDENT + "}");
         writer.println();

@@ -1,22 +1,29 @@
 package com.temprovich.e30;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.temprovich.e30.Expression.Assign;
+import com.temprovich.e30.Expression.Attribute;
 import com.temprovich.e30.Expression.Call;
 import com.temprovich.e30.Expression.Logical;
+import com.temprovich.e30.Expression.Parent;
+import com.temprovich.e30.Expression.Self;
+import com.temprovich.e30.Expression.Set;
 import com.temprovich.e30.Expression.Variable;
 import com.temprovich.e30.Statement.Auto;
 import com.temprovich.e30.Statement.Block;
+import com.temprovich.e30.Statement.Break;
+import com.temprovich.e30.Statement.Continue;
 import com.temprovich.e30.Statement.Expr;
-import com.temprovich.e30.Statement.Function;
 import com.temprovich.e30.Statement.If;
+import com.temprovich.e30.Statement.Trait;
 import com.temprovich.e30.Statement.While;
 import com.temprovich.e30.error.E30RuntimeError;
 import com.temprovich.e30.preinclude.E30NativeBase;
 import com.temprovich.e30.preinclude.E30NativeInternal;
-import com.temprovich.e30.preinclude.E30NativeMath;
 import com.temprovich.e30.preinclude.Preinclude;
 
 public class Interpreter implements Expression.Visitor<Object>,
@@ -24,20 +31,23 @@ public class Interpreter implements Expression.Visitor<Object>,
 
     private static Preinclude[] preincluded = new Preinclude[] {
         new E30NativeInternal(),
-        new E30NativeBase(),
-        new E30NativeMath(), // TODO: move to import statement
+        new E30NativeBase()
     };
 
-    private final Environment globals;
-
+    private final Map<String, Object> globals;
     private Environment environment;
+    private final Map<Object, Integer> locals;
+    private final Map<Object, Integer> slots;
+
 
     public Interpreter() {
-        this.globals = new Environment();
+        this.globals = new HashMap<String, Object>();
         for (var preinclude : preincluded) {
             preinclude.inject(globals);
         }
-        this.environment = globals;
+        this.environment = null;
+        this.locals = new HashMap<Object, Integer>();
+        this.slots = new HashMap<Object, Integer>();
     }
 
     public void interpret(List<Statement> statements) {
@@ -73,28 +83,18 @@ public class Interpreter implements Expression.Visitor<Object>,
         return "?";
     }
 
-    public boolean is(Object object0, Object object1) {
-        if (object0 == null && object1 == null) {
-            return true;
-        } else if (object0 == null) {
-            return false;
-        } else {
-            return typeOf(object0).equals(typeOf(object1));
-        }
-    }
-
     @Override
-    public Object visitLiteralExpression(Expression.Literal expression) {
+    public Object visit(Expression.Literal expression) {
         return expression.value();
     }
 
     @Override
-    public Object visitGroupingExpression(Expression.Grouping expression) {
+    public Object visit(Expression.Grouping expression) {
         return evaluate(expression.expression());
     }
 
     @Override
-    public Object visitUnaryExpression(Expression.Unary expression) {
+    public Object visit(Expression.Unary expression) {
         Object right = evaluate(expression.right());
 
         switch (expression.operator().type()) {
@@ -105,7 +105,7 @@ public class Interpreter implements Expression.Visitor<Object>,
     }
 
     @Override
-    public Object visitBinaryExpression(Expression.Binary expression) {
+    public Object visit(Expression.Binary expression) {
         Object left = evaluate(expression.left());
         Object right = evaluate(expression.right());
 
@@ -131,11 +131,8 @@ public class Interpreter implements Expression.Visitor<Object>,
                 if (left instanceof Double && right instanceof Double) {
                     return (double) left + (double) right;
                 }
-                if (left instanceof String) {
-                    return (String) left + stringify(right);
-                }
-                if (right instanceof String) {
-                    return stringify(left) + (String) right;
+                if (left instanceof String || right instanceof String) {
+                    return stringify(left) + stringify(right);
                 }
 
                 throw new E30RuntimeError(expression.operator(), "Operands must be two numbers or two strings."); // throw an error if the attempted operation is neither addition nor concatenation
@@ -151,42 +148,101 @@ public class Interpreter implements Expression.Visitor<Object>,
     }
 
     @Override
-    public Void visitExprStatement(Expr statement) {
+    public Void visit(Expr statement) {
         evaluate(statement.expression());
         return null;
     }
     
     @Override
-    public Void visitAutoStatement(Auto statement) {
+    public Void visit(Auto statement) {
         Object value = null;
         if (statement.value() != null) {
             value = evaluate(statement.value());
         }
 
-        environment.define(statement.name().lexeme(), value);
+        define(statement.name(), value);
         return null;
     }
 
     @Override
-    public Object visitVariableExpression(Variable expression) {
-        return environment.fetch(expression.name());
+    public Void visit(Statement.Node statement) {
+        Object parent = null;
+        if (statement.parent() != null) {
+            parent = evaluate(statement.parent());
+
+            if (!(parent instanceof E30Node)) {
+                throw new E30RuntimeError(statement.parent().name(), "Parent must be a node.");
+            }
+        }
+
+        define(statement.name(), null);
+
+        if (statement.parent() != null) {
+            environment = new Environment(environment);
+            define("parent", parent);
+        }
+
+        var metaMethods = applyTraits(statement.traits());
+        for (var method : statement.metaMethods()) {
+            E30Function function = new E30Function(method, environment, false);
+            metaMethods.put(method.name().lexeme(), function);
+        }
+
+        E30Node metaNode = new E30Node(null, (E30Node) parent, statement.name().lexeme() + ":metanode", metaMethods);
+
+        var methods = applyTraits(statement.traits());
+        for (var method : statement.methods()) {
+            E30Function function = new E30Function(method, environment, method.name().lexeme().equals("define"));
+            methods.put(method.name().lexeme(), function);
+        }
+
+        E30Node node = new E30Node(metaNode, (E30Node) parent, statement.name().lexeme(),  methods);
+        
+        if (statement.parent() != null) {
+            environment = environment.enclosing();
+        }
+
+        Integer distance = locals.get(statement);
+        if (distance != null) {
+            environment.assign(distance, slots.get(statement), node);
+            return null;
+        }
+
+        globals.put(statement.name().lexeme(), node);
+
+        return null;
     }
 
     @Override
-    public Object visitAssignExpression(Assign expression) {
+    public Object visit(Variable expression) {
+        return fetchVariable(expression.name(), expression);
+    }
+
+    @Override
+    public Object visit(Assign expression) {
         Object value = evaluate(expression.value());
-        environment.assign(expression.name(), value);
+        Integer distance = locals.get(expression);
+        if (distance != null) {
+            environment.assign(distance, slots.get(expression), value);
+        } else {
+            if (globals.containsKey(expression.name().lexeme())) {
+                globals.put(expression.name().lexeme(), value);
+            } else {
+                throw new E30RuntimeError(expression.name(), "Undefined variable '" + expression.name().lexeme() + "'.");
+            }
+        }
+        
         return value;
     }
 
     @Override
-    public Void visitBlockStatement(Block statement) {
+    public Void visit(Block statement) {
         executeBlock(statement.statements(), new Environment(environment));
         return null;
     }
 
     @Override
-    public Void visitIfStatement(If statement) {
+    public Void visit(If statement) {
         if (predicate(evaluate(statement.condition()))) {
             execute(statement.thenBranch());
         } else if (statement.elseBranch() != null) {
@@ -197,7 +253,7 @@ public class Interpreter implements Expression.Visitor<Object>,
     }
 
     @Override
-    public Object visitLogicalExpression(Logical statement) {
+    public Object visit(Logical statement) {
         Object left = evaluate(statement.left());
         
         if (statement.operator().type() == TokenType.OR) {
@@ -210,16 +266,27 @@ public class Interpreter implements Expression.Visitor<Object>,
     }
 
     @Override
-    public Void visitWhileStatement(While statement) {
-        while (predicate(evaluate(statement.condition()))) {
-            execute(statement.body());
+    public Void visit(While statement) {
+        try {
+            while (predicate(evaluate(statement.condition()))) {
+                var stmt = statement.body();
+
+                // handle continue statements
+                if (stmt instanceof Continue) {
+                    //TODO: implement continue
+                }
+
+                execute(statement.body());
+            }
+        } catch (BreakException error) {
+            // do nothing
         }
 
         return null;
     }
 
     @Override
-    public Object visitCallExpression(Call expression) {
+    public Object visit(Call expression) {
         var callee = evaluate(expression.callee());
 
         List<Object> arguments = new ArrayList<Object>();
@@ -241,20 +308,139 @@ public class Interpreter implements Expression.Visitor<Object>,
     }
 
     @Override
-    public Void visitFunctionStatement(Function statement) {
-        E30Function function = new E30Function(statement, environment);
-        environment.define(statement.name().lexeme(), function);
+    public Void visit(Statement.Function statement) {
+        E30Function function = new E30Function(statement, environment, false);
+        define(statement.name(), function);
         return null;
     }
 
     @Override
-    public Void visitReturnStatement(Statement.Return statement) {
+    public Object visit(Expression.Function expression) {
+        return new E30Function(new Statement.Function(null, expression), environment, false);
+    }
+
+    @Override
+    public Void visit(Statement.Return statement) {
         Object value = null;
         if (statement.value() != null) {
             value = evaluate(statement.value());
         }
 
         throw new com.temprovich.e30.Return(value);
+    }
+
+    @Override
+    public Void visit(Break statement) {
+        throw new BreakException();
+    }
+
+    @Override
+    public Void visit(Continue statement) {
+        // handle in while statement
+        return null;
+    }
+
+    @Override
+    public Object visit(Attribute expression) {
+        var object = evaluate(expression.object());
+        if (object instanceof E30Instance) {
+            var result = ((E30Instance) object).get(expression.name());
+            if (result instanceof E30Function && ((E30Function) result).isGetter()) {
+                return ((E30Function) result).call(this, null);
+            }
+
+            return result;
+        }
+        
+        throw new E30RuntimeError(expression.name(), "Only qualified instances have accessible attributes.");
+    }
+
+    @Override
+    public Object visit(Set expression) {
+        var object = evaluate(expression.object());
+        if (!(object instanceof E30Instance)) {
+            throw new E30RuntimeError(expression.name(), "Only instances have fields.");
+        }
+
+        Object value = evaluate(expression.value());
+        ((E30Instance) object).set(expression.name(), value);
+        return value;
+    }
+
+    @Override
+    public Object visit(Self expression) {
+        return fetchVariable(expression.keyword(), expression);
+    }
+
+    @Override
+    public Object visit(Parent expression) {
+        int distance = locals.get(expression);
+        E30Node parent = (E30Node) environment.fetch(distance, 0);
+        
+        E30Instance instance = (E30Instance) environment.fetch(distance - 1, 0);
+
+        E30Function method = parent.fetchMethod(expression.method().lexeme());
+
+        if (method == null) {
+            throw new E30RuntimeError(expression.method(), "Undefined property '" + expression.method().lexeme() + "'.");
+        }
+
+        return method.bind(instance);
+    }
+
+    @Override
+    public Void visit(Trait statement) {
+        define(statement.name().lexeme(), null);
+
+        Map<String, E30Function> methods = applyTraits(statement.traits());
+
+        for (var method : statement.methods()) {
+            if (methods.containsKey(method.name().lexeme())) {
+                throw new E30RuntimeError(method.name(), "Method '" + method.name().lexeme() + "' already defined.");
+            }
+            E30Function function = new E30Function(method, environment, false);
+            methods.put(method.name().lexeme(), function);
+        }
+
+        E30Trait trait = new E30Trait(statement.name(), methods);
+
+        Integer distance = locals.get(statement);
+        if (distance != null) {
+            environment.assign(distance, slots.get(statement), trait);
+            return null;
+        }
+
+        globals.put(statement.name().lexeme(), trait);
+
+        return null;
+    }
+
+    private Map<String, E30Function> applyTraits(List<Expression> traits) {
+        Map<String, E30Function> methods = new HashMap<String, E30Function>();
+
+        for (Expression traitExpression : traits) {
+            Object traitObject = evaluate(traitExpression);
+            if (!(traitObject instanceof E30Trait)) {
+                Token name = ((Expression.Variable) traitExpression).name();
+                throw new E30RuntimeError(name, "Only traits can be applied.");
+            }
+
+            E30Trait trait = (E30Trait) traitObject;
+            for (var name : trait.methods().keySet()) {
+                if (methods.containsKey(name)) {
+                    throw new E30RuntimeError("Method '" + name + "' already defined.");
+                }
+
+                methods.put(name, trait.methods().get(name));
+            }
+        }
+
+        return methods;
+    }
+
+    public void resolve(Expression expression, int depth, int slot) {
+        locals.put(expression, depth);
+        slots.put(expression, slot);
     }
 
     protected void executeBlock(List<Statement> statements, Environment environment) {
@@ -276,6 +462,36 @@ public class Interpreter implements Expression.Visitor<Object>,
 
     private Object evaluate(Expression expression) {
         return expression.accept(this);
+    }
+
+    private void define(Token name, Object value) {
+        if (environment != null) {
+            environment.define(value);
+        } else {
+            globals.put(name.lexeme(), value);
+        }
+    }
+
+    private void define(String name, Object value) {
+        if (environment != null) {
+            environment.define(value);
+        } else {
+            globals.put(name, value);
+        }
+    }
+
+    private Object fetchVariable(Token name, Expression expression) {
+        Integer distance = locals.get(expression);
+
+        if (distance != null) {
+            return environment.fetch(distance, slots.get(expression));
+        }
+
+        if (globals.containsKey(name.lexeme())) {
+            return globals.get(name.lexeme());
+        }
+
+        throw new E30RuntimeError(name, "Undefined variable '" + name.lexeme() + "'.");
     }
 
     private boolean predicate(Object obj) {
@@ -323,9 +539,5 @@ public class Interpreter implements Expression.Visitor<Object>,
         }
 
         return value.toString();
-    }
-
-    public Environment getGlobals() {
-        return globals;
     }
 }

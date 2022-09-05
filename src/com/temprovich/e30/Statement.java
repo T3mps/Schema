@@ -6,19 +6,27 @@ public abstract class Statement {
 
     public interface Visitor<R> {
 
-        public abstract R visitBlockStatement(Block statement);
+        public abstract R visit(Block statement);
 
-        public abstract R visitExprStatement(Expr statement);
+        public abstract R visit(Expr statement);
 
-        public abstract R visitFunctionStatement(Function statement);
+        public abstract R visit(Node statement);
 
-        public abstract R visitIfStatement(If statement);
+        public abstract R visit(Trait statement);
 
-        public abstract R visitAutoStatement(Auto statement);
+        public abstract R visit(Function statement);
 
-        public abstract R visitWhileStatement(While statement);
+        public abstract R visit(Auto statement);
 
-        public abstract R visitReturnStatement(Return statement);
+        public abstract R visit(If statement);
+
+        public abstract R visit(Return statement);
+
+        public abstract R visit(While statement);
+
+        public abstract R visit(Break statement);
+
+        public abstract R visit(Continue statement);
     }
 
     public static class Block extends Statement {
@@ -35,7 +43,7 @@ public abstract class Statement {
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitBlockStatement(this);
+            return visitor.visit(this);
         }
     }
 
@@ -53,37 +61,127 @@ public abstract class Statement {
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitExprStatement(this);
+            return visitor.visit(this);
         }
     }
 
-    public static class Function extends Statement {
+    public static class Node extends Statement {
 
         private final Token name;
-        private final List<Token> parameters;
-        private final List<Statement> body;
+        private final Expression.Variable parent;
+        private final List<Expression> traits;
+        private final List<Statement.Function> methods;
+        private final List<Statement.Function> metaMethods;
 
-        public Function(Token name, List<Token> parameters, List<Statement> body) {
+        public Node(Token name, Expression.Variable parent, List<Expression> traits, List<Statement.Function> methods, List<Statement.Function> metaMethods) {
             this.name = name;
-            this.parameters = parameters;
-            this.body = body;
+            this.parent = parent;
+            this.traits = traits;
+            this.methods = methods;
+            this.metaMethods = metaMethods;
         }
 
         public Token name() {
             return name;
         }
 
-        public List<Token> parameters() {
-            return parameters;
+        public Expression.Variable parent() {
+            return parent;
         }
 
-        public List<Statement> body() {
-            return body;
+        public List<Expression> traits() {
+            return traits;
+        }
+
+        public List<Statement.Function> methods() {
+            return methods;
+        }
+
+        public List<Statement.Function> metaMethods() {
+            return metaMethods;
         }
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitFunctionStatement(this);
+            return visitor.visit(this);
+        }
+    }
+
+    public static class Trait extends Statement {
+
+        private final Token name;
+        private final List<Expression> traits;
+        private final List<Statement.Function> methods;
+
+        public Trait(Token name, List<Expression> traits, List<Statement.Function> methods) {
+            this.name = name;
+            this.traits = traits;
+            this.methods = methods;
+        }
+
+        public Token name() {
+            return name;
+        }
+
+        public List<Expression> traits() {
+            return traits;
+        }
+
+        public List<Statement.Function> methods() {
+            return methods;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+    }
+
+    public static class Function extends Statement {
+
+        private final Token name;
+        private final Expression.Function function;
+
+        public Function(Token name, Expression.Function function) {
+            this.name = name;
+            this.function = function;
+        }
+
+        public Token name() {
+            return name;
+        }
+
+        public Expression.Function function() {
+            return function;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+    }
+
+    public static class Auto extends Statement {
+
+        private final Token name;
+        private final Expression value;
+
+        public Auto(Token name, Expression value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        public Token name() {
+            return name;
+        }
+
+        public Expression value() {
+            return value;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
         }
     }
 
@@ -113,55 +211,7 @@ public abstract class Statement {
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitIfStatement(this);
-        }
-    }
-
-    public static class Auto extends Statement {
-
-        private final Token name;
-        private final Expression value;
-
-        public Auto(Token name, Expression value) {
-            this.name = name;
-            this.value = value;
-        }
-
-        public Token name() {
-            return name;
-        }
-
-        public Expression value() {
-            return value;
-        }
-
-        @Override
-        public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitAutoStatement(this);
-        }
-    }
-
-    public static class While extends Statement {
-
-        private final Expression condition;
-        private final Statement body;
-
-        public While(Expression condition, Statement body) {
-            this.condition = condition;
-            this.body = body;
-        }
-
-        public Expression condition() {
-            return condition;
-        }
-
-        public Statement body() {
-            return body;
-        }
-
-        @Override
-        public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitWhileStatement(this);
+            return visitor.visit(this);
         }
     }
 
@@ -185,7 +235,57 @@ public abstract class Statement {
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
-            return visitor.visitReturnStatement(this);
+            return visitor.visit(this);
+        }
+    }
+
+    public static class While extends Statement {
+
+        private final Expression condition;
+        private final Statement body;
+
+        public While(Expression condition, Statement body) {
+            this.condition = condition;
+            this.body = body;
+        }
+
+        public Expression condition() {
+            return condition;
+        }
+
+        public Statement body() {
+            return body;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+    }
+
+    public static class Break extends Statement {
+
+
+        public Break() {
+        }
+
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+    }
+
+    public static class Continue extends Statement {
+
+
+        public Continue() {
+        }
+
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
         }
     }
 

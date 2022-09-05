@@ -6,35 +6,56 @@ public class E30Function implements E30Callable {
 
     private final Statement.Function declaration;
     private final Environment closure;
+    private final boolean isDefinition;
 
-    E30Function(Statement.Function declaration, Environment closure) {
+    public E30Function(Statement.Function declaration, Environment closure, boolean isDefinition) {
         this.declaration = declaration;
         this.closure = closure;
+        this.isDefinition = isDefinition;
+    }
+
+    public E30Function bind(E30Instance e30Instance) {
+        Environment environment = new Environment(closure);
+        environment.define(e30Instance);
+        return new E30Function(declaration, environment, isDefinition);
     }
     
-
     @Override
     public int arity() {
-        return declaration.parameters().size();
+        return declaration.function().parameters().size();
     }
 
     @Override
     public Object call(Interpreter interpreter, List<Object> arguments) {
         Environment environment = new Environment(closure);
-        for (int i = 0; i < declaration.parameters().size(); i++) {
-            environment.define(declaration.parameters().get(i).lexeme(), arguments.get(i));
+        if (declaration.function().parameters() != null) {
+            int size = declaration.function().parameters().size();
+            for (int i = 0; i < size; i++) {
+                environment.define(arguments.get(i));
+            }       
         }
-        
+
         try {
-            interpreter.executeBlock(declaration.body(), environment);
+            interpreter.executeBlock(declaration.function().body(), environment);
         } catch (Return returnValue) {
+            if (isDefinition) {
+                return closure.fetch(0, 0);
+            }
             return returnValue.value();
+        }
+
+        if (isDefinition) {
+            return closure.fetch(0, 0);
         }
         return null;
     }
 
+    public boolean isGetter() {
+        return declaration.function().parameters() == null;
+    }
+
     @Override
     public String toString() {
-        return "<function " + declaration.name().lexeme() + '>';
+        return "<fn + " + declaration.name().lexeme() + ">";
     }
 }

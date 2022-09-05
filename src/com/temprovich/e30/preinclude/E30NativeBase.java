@@ -1,6 +1,7 @@
 package com.temprovich.e30.preinclude;
 
 import java.util.List;
+import java.util.Map;
 
 import com.temprovich.e30.E30;
 import com.temprovich.e30.E30Callable;
@@ -155,24 +156,7 @@ public final class E30NativeBase implements Preinclude {
         public String toString() { return "<native function>"; }
     });
 
-    /*
-     * is(x, y): Returns true if a is of type b.
-     */
-    private static final Definition IS = new Definition("is", new E30Callable() {
-
-        @Override
-        public int arity() { return 2; }
-        
-        @Override
-        public Object call(Interpreter interpreter, List<Object> arguments) {
-            return interpreter.is(arguments.get(0), arguments.get(1));
-        }
-
-        @Override
-        public String toString() { return "<native function>"; }
-    });
-
-    public void inject(Environment environment) {
+    public void inject(Map<String, Object> environment) {
         ABORT_0.inject(environment);
         ABORT_1.inject(environment);
         EXIT.inject(environment);
@@ -181,6 +165,5 @@ public final class E30NativeBase implements Preinclude {
         NOW.inject(environment);
         WAIT.inject(environment);
         TYPE.inject(environment);
-        IS.inject(environment);
     }
 }

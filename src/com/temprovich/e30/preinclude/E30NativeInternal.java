@@ -1,9 +1,9 @@
 package com.temprovich.e30.preinclude;
 
 import java.util.List;
+import java.util.Map;
 
 import com.temprovich.e30.E30Callable;
-import com.temprovich.e30.Environment;
 import com.temprovich.e30.Interpreter;
 
 public class E30NativeInternal implements Preinclude {
@@ -28,7 +28,7 @@ public class E30NativeInternal implements Preinclude {
     });
 
     @Override
-    public void inject(Environment environment) {
+    public void inject(Map<String, Object> environment) {
         CLEAR.inject(environment);
     }   
 }

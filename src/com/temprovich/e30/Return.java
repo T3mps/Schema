@@ -1,6 +1,7 @@
 package com.temprovich.e30;
 
 public class Return extends RuntimeException {
+    private static final long serialVersionUID = 1L;
 
     private final Object value;
 
