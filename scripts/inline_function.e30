@@ -1,6 +1,6 @@
 
 function thrice(fn) {
-    for (auto i = 1; i <= 3; i = i + 1) {
+    for (auto i = 1; i <= 3; ++i) {
         fn(i);
     }
 }

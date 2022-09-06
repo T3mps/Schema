@@ -1,12 +1,15 @@
-package com.temprovich.e30.preinclude;
+package com.temprovich.e30.module;
 
 import java.util.List;
 import java.util.Map;
 
-import com.temprovich.e30.E30Callable;
 import com.temprovich.e30.Interpreter;
+import com.temprovich.e30.instance.E30Callable;
 
-public class E30NativeInternal implements Preinclude {
+public class E30ModuleInternal implements E30Module {
+
+    public E30ModuleInternal() {
+    }
 
     /*
      * clear(): Sends a clear screen command to the console.

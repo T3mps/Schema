@@ -1,4 +1,4 @@
-package com.temprovich.e30;
+package com.temprovich.e30.lexer;
 
 public class Token {
     

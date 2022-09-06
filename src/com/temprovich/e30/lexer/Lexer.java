@@ -1,9 +1,11 @@
-package com.temprovich.e30;
+package com.temprovich.e30.lexer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.temprovich.e30.E30;
 
 public final class Lexer {
 
@@ -26,6 +28,8 @@ public final class Lexer {
     public static final String KW_CONTINUE = "continue";
     public static final String KW_TRAIT = "trait";
     public static final String KW_WITH = "with";
+    public static final String KW_ARRAY = "array";
+    public static final String KW_USE = "use";
 
     private static final Map<String, TokenType> keywords;
 
@@ -50,6 +54,8 @@ public final class Lexer {
         keywords.put(KW_CONTINUE, TokenType.CONTINUE);
         keywords.put(KW_TRAIT, TokenType.TRAIT);
         keywords.put(KW_WITH, TokenType.WITH);
+        keywords.put(KW_ARRAY, TokenType.ARRAY);
+        keywords.put(KW_USE, TokenType.USE);
     }
     
     private final String source;
@@ -81,24 +87,41 @@ public final class Lexer {
             case ')': addToken(TokenType.RIGHT_PAREN); break;
             case '{': addToken(TokenType.LEFT_BRACE); break;
             case '}': addToken(TokenType.RIGHT_BRACE); break;
+            case '[': addToken(TokenType.LEFT_SQUARE_BRACKET); break;
+            case ']': addToken(TokenType.RIGHT_SQUARE_BRACKET); break;
+
             case ',': addToken(TokenType.COMMA); break;
             case '.': addToken(TokenType.DOT); break;
-            case '-': addToken(TokenType.MINUS); break;
-            case '+': addToken(TokenType.PLUS); break;
             case ';': addToken(TokenType.SEMICOLON); break;
-            case '*': addToken(TokenType.STAR); break;
-            case ':': addToken(TokenType.COLON); break;
+            case ':': addToken(match(':') ? TokenType.COLON_COLON : TokenType.COLON); break;
+
             case '!': addToken(match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
             case '=': addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
             case '<': addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;
             case '>': addToken(match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
+
+            case '+': addToken(match('=') ? TokenType.PLUS_EQUAL : match('+') ? TokenType.PLUS_PLUS : TokenType.PLUS); break;
+            case '-': addToken(match('=') ? TokenType.MINUS_EQUAL : match('-') ? TokenType.MINUS_MINUS : TokenType.MINUS); break;
+            case '*': addToken(match('=') ? TokenType.STAR_EQUAL : TokenType.STAR); break;
             case '/':
                 if (match('/')) {
                     while (peek() != '\n' && !atEnd()) {
                         advance();
                     }
+                } else if (match('*')) {
+                    while (peek() != '*' && peekNext() != '/' && !atEnd()) {
+                        if (peek() == '\n') {
+                            line++;
+                        }
+                        advance();
+                    }
+                    if (atEnd()) {
+                        throw new RuntimeException("Unterminated comment");
+                    }
+                    advance();
+                    advance();
                 } else {
-                    addToken(TokenType.SLASH);
+                    addToken(match('=') ? TokenType.SLASH_EQUAL : TokenType.SLASH); break;
                 }
                 break;
             case ' ':
@@ -178,11 +201,6 @@ public final class Lexer {
     private boolean atEnd() {
         return current >= source.length();
     }
-
-    // private char advance() {
-    //     current++;
-    //     return source.charAt(current - 1);
-    // }
 
     private char advance() {
         return source.charAt(current++);

@@ -6,10 +6,15 @@ import java.util.Map;
 import java.util.Stack;
 
 import com.temprovich.e30.Expression.Attribute;
+import com.temprovich.e30.Expression.Index;
+import com.temprovich.e30.Expression.IndexGet;
+import com.temprovich.e30.Expression.IndexSet;
 import com.temprovich.e30.Expression.Parent;
 import com.temprovich.e30.Expression.Self;
 import com.temprovich.e30.Expression.Set;
 import com.temprovich.e30.Statement.Trait;
+import com.temprovich.e30.Statement.Use;
+import com.temprovich.e30.lexer.Token;
 
 public class SemanticResolver implements Expression.Visitor<Void>, Statement.Visitor<Void> {
 
@@ -291,6 +296,33 @@ public class SemanticResolver implements Expression.Visitor<Void>, Statement.Vis
         endScope();
 
         currentNodeType = enclosingClass;
+        return null;
+    }
+
+    @Override
+    public Void visit(Index expression) {
+        declare(expression.name());
+        resolve(expression.index());
+        return null;
+    }
+
+    @Override
+    public Void visit(IndexGet expression) {
+        resolve(expression.size());
+        return null;
+    }
+
+    @Override
+    public Void visit(IndexSet expression) {
+        declare(expression.name());
+        resolve(expression.index());
+        resolve(expression.value());
+        return null;
+    }
+
+    @Override
+    public Void visit(Use statement) {
+        // nothing to handle
         return null;
     }
 

@@ -30,7 +30,10 @@ public class GenerateAbstractSyntaxTree {
             "Attribute : Expression object, Token name",
             "Set       : Expression object, Token name, Expression value",
             "Self      : Token keyword",
-            "Parent    : Token keyword, Token method"
+            "Parent    : Token keyword, Token method",
+            "Index     : Token name, Expression index",
+            "IndexGet  : Expression size",
+            "IndexSet  : Token name, Expression index, Expression value"
         ));
 
         define(outputDir, "Statement", Arrays.asList(

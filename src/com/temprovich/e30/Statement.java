@@ -2,6 +2,8 @@ package com.temprovich.e30;
 
 import java.util.List;
 
+import com.temprovich.e30.lexer.Token;
+
 public abstract class Statement {
 
     public interface Visitor<R> {
@@ -27,6 +29,8 @@ public abstract class Statement {
         public abstract R visit(Break statement);
 
         public abstract R visit(Continue statement);
+
+        public abstract R visit(Use statement);
     }
 
     public static class Block extends Statement {
@@ -159,6 +163,11 @@ public abstract class Statement {
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visit(this);
         }
+
+        @Override
+        public String toString() {
+            return "Function [name=" + name.lexeme() + ", function=" + function + "]";
+        }
     }
 
     public static class Auto extends Statement {
@@ -265,10 +274,8 @@ public abstract class Statement {
 
     public static class Break extends Statement {
 
-
         public Break() {
         }
-
 
         @Override
         public <R> R accept(Visitor<R> visitor) {
@@ -278,10 +285,26 @@ public abstract class Statement {
 
     public static class Continue extends Statement {
 
-
         public Continue() {
         }
 
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+    }
+
+    public static class Use extends Statement {
+
+        private final List<Token> modules;
+
+        public Use(List<Token> modules) {
+            this.modules = modules;
+        }
+
+        public List<Token> modules() {
+            return modules;
+        }
 
         @Override
         public <R> R accept(Visitor<R> visitor) {

@@ -9,6 +9,9 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import com.temprovich.e30.error.E30RuntimeError;
+import com.temprovich.e30.lexer.Lexer;
+import com.temprovich.e30.lexer.Token;
+import com.temprovich.e30.lexer.TokenType;
 
 /*
  * https://timothya.com/pdfs/crafting-interpreters.pdf
@@ -95,6 +98,10 @@ public class E30 {
         interpreter.interpret(statements);
     }
 
+    public static void error(String message) {
+        System.err.println(message);
+        hadError = true;
+    }
     public static void error(int line, String message) {
         report(line, "", message);
     }

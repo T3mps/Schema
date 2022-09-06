@@ -5,6 +5,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.temprovich.e30.error.E30ParseError;
+import com.temprovich.e30.lexer.Token;
+import com.temprovich.e30.lexer.TokenType;
 
 public class Parser {
     
@@ -28,12 +30,6 @@ public class Parser {
 
     private Statement declaration() {
         try {
-            if (match(TokenType.NODE)) {
-                return nodeDeclaration();
-            }
-            if (match(TokenType.TRAIT)) {
-                return traitDeclaration();
-            }
             if (match(TokenType.FUNCTION)) {
                 if (check(TokenType.FUNCTION) && checkNext(TokenType.IDENTIFIER)) {
                     consume(TokenType.FUNCTION, null);
@@ -43,7 +39,12 @@ public class Parser {
             if (match(TokenType.AUTO)) {
                 return autoDeclaration();
             }
-
+            if (match(TokenType.NODE)) {
+                return nodeDeclaration();
+            }
+            if (match(TokenType.TRAIT)) {
+                return traitDeclaration();
+            }
             return statement();
         } catch (E30ParseError e) {
             synchronize();
@@ -104,18 +105,6 @@ public class Parser {
         return traits;
     }
 
-    private Statement autoDeclaration() {
-        Token name = consume(TokenType.IDENTIFIER, "Expected name after 'auto'");
-
-        Expression initializer = null;
-        if (match(TokenType.EQUAL)) {
-            initializer = expression();
-        }
-
-        consume(TokenType.SEMICOLON, "Expected ';' after variable declaration");
-        return new Statement.Auto(name, initializer);
-    }
-
     private Statement.Function function(String type) {
         Token name = consume(TokenType.IDENTIFIER, "Expect " + type + " name.");
         return new Statement.Function(name, functionBody(type));
@@ -144,6 +133,18 @@ public class Parser {
         return new Expression.Function(parameters, body);
     }
 
+    private Statement autoDeclaration() {
+        Token name = consume(TokenType.IDENTIFIER, "Expected name after 'auto'");
+
+        Expression initializer = null;
+        if (match(TokenType.EQUAL)) {
+            initializer = expression();
+        }
+
+        consume(TokenType.SEMICOLON, "Expected ';' after variable declaration");
+        return new Statement.Auto(name, initializer);
+    }
+
     private Statement statement() {
         if (match(TokenType.IF)) {
             return ifStatement();
@@ -162,6 +163,9 @@ public class Parser {
         }
         if (match(TokenType.CONTINUE)) {
             return continueStatement();
+        }
+        if (match(TokenType.USE)) {
+            return useStatement();
         }
         if (match(TokenType.LEFT_BRACE)) {
             return new Statement.Block(block());
@@ -288,6 +292,17 @@ public class Parser {
         return new Statement.Continue();
     }
 
+    private Statement useStatement() {
+        List<Token> modules = new ArrayList<Token>();
+        do {
+            modules.add(consume(TokenType.IDENTIFIER, "Expected module name after 'use'"));
+        } while (match(TokenType.COMMA));
+
+        consume(TokenType.SEMICOLON, "Expected ';' after use statement");
+
+        return new Statement.Use(modules);
+    }
+
     private List<Statement> block() {
         List<Statement> statements = new ArrayList<Statement>();
 
@@ -313,11 +328,15 @@ public class Parser {
             if (expression instanceof Expression.Variable) {
                 Token name = ((Expression.Variable) expression).name();
                 return new Expression.Assign(name, value);
+            } else if (expression instanceof Expression.Index) {
+                Expression.Index index = (Expression.Index) expression;
+                Token name = index.name();
+                return new Expression.IndexSet(name, index.index(), value);
             } else if (expression instanceof Expression.Attribute) {
                 Expression.Attribute attribute = (Expression.Attribute) expression;
                 return new Expression.Set(attribute.object(), attribute.name(), value);
             }
-
+            
             error(equals, "Invalid assignment target.");
         }
 
@@ -327,7 +346,10 @@ public class Parser {
     private Expression equality() {
         Expression expression = comparison();
 
-        while (match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
+        while (match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL, TokenType.PLUS_EQUAL,
+                                                                  TokenType.MINUS_EQUAL,
+                                                                  TokenType.STAR_EQUAL,
+                                                                  TokenType.SLASH_EQUAL)) {
             Token operator = previous();
             Expression right = comparison();
             expression = new Expression.Binary(expression, operator, right);
@@ -397,7 +419,7 @@ public class Parser {
     }
 
     private Expression unary() {
-        if (match(TokenType.BANG, TokenType.MINUS)) {
+        if (match(TokenType.BANG, TokenType.MINUS, TokenType.PLUS_PLUS, TokenType.MINUS_MINUS)) {
             Token operator = previous();
             Expression right = unary();
             return new Expression.Unary(operator, right);
@@ -464,7 +486,22 @@ public class Parser {
             return new Expression.Self(previous());
         }
         if (match(TokenType.IDENTIFIER)) {
+            Token next = peek();
+            if (next.type() == TokenType.LEFT_SQUARE_BRACKET) {
+                Token name = previous();
+                consume(TokenType.LEFT_SQUARE_BRACKET, "Expect '[' after identifier.");
+                Expression index = expression();
+                consume(TokenType.RIGHT_SQUARE_BRACKET, "Expect ']' after index.");
+                return new Expression.Index(name, index);
+            }
+
             return new Expression.Variable(previous());
+        }
+        if (match(TokenType.ARRAY)) {
+            consume(TokenType.LEFT_SQUARE_BRACKET, "Expect '[' after 'array'.");
+            Expression size = expression();
+            consume(TokenType.RIGHT_SQUARE_BRACKET, "Expect ']' after array size.");
+            return new Expression.IndexGet(size);
         }
         if (match(TokenType.FUNCTION)) {
             return functionBody("function");

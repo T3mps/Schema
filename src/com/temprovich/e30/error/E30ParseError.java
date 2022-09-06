@@ -1,6 +1,6 @@
 package com.temprovich.e30.error;
 
-import com.temprovich.e30.Token;
+import com.temprovich.e30.lexer.Token;
 
 public final class E30ParseError extends E30RuntimeError {
 

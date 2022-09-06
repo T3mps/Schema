@@ -2,6 +2,9 @@ package com.temprovich.e30;
 
 import java.util.Map;
 
+import com.temprovich.e30.instance.E30Function;
+import com.temprovich.e30.lexer.Token;
+
 public class E30Trait {
     
     private final Token name;

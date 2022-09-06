@@ -1,9 +1,10 @@
-package com.temprovich.e30;
+package com.temprovich.e30.instance;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import com.temprovich.e30.error.E30RuntimeError;
+import com.temprovich.e30.lexer.Token;
 
 public class E30Instance {
     

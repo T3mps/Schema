@@ -1,6 +1,11 @@
-package com.temprovich.e30;
+package com.temprovich.e30.instance;
 
 import java.util.List;
+
+import com.temprovich.e30.Environment;
+import com.temprovich.e30.Interpreter;
+import com.temprovich.e30.Statement;
+import com.temprovich.e30.throwables.ReturnException;
 
 public class E30Function implements E30Callable {
 
@@ -37,7 +42,7 @@ public class E30Function implements E30Callable {
 
         try {
             interpreter.executeBlock(declaration.function().body(), environment);
-        } catch (Return returnValue) {
+        } catch (ReturnException returnValue) {
             if (isDefinition) {
                 return closure.fetch(0, 0);
             }

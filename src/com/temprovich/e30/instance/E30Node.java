@@ -1,7 +1,9 @@
-package com.temprovich.e30;
+package com.temprovich.e30.instance;
 
 import java.util.List;
 import java.util.Map;
+
+import com.temprovich.e30.Interpreter;
 
 public class E30Node extends E30Instance implements E30Callable {
     

@@ -2,6 +2,8 @@ package com.temprovich.e30;
 
 import java.util.List;
 
+import com.temprovich.e30.lexer.Token;
+
 public abstract class Expression {
 
     public interface Visitor<R> {
@@ -31,6 +33,12 @@ public abstract class Expression {
         public abstract R visit(Self expression);
 
         public abstract R visit(Parent expression);
+
+        public abstract R visit(Index expression);
+
+        public abstract R visit(IndexGet expression);
+
+        public abstract R visit(IndexSet expression);
     }
 
     public static class Literal extends Expression {
@@ -337,6 +345,78 @@ public abstract class Expression {
 
         public Token method() {
             return method;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+    }
+
+    public static class Index extends Expression {
+
+        private final Token name;
+        private final Expression index;
+
+        public Index(Token name, Expression index) {
+            this.name = name;
+            this.index = index;
+        }
+
+        public Token name() {
+            return name;
+        }
+
+        public Expression index() {
+            return index;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+    }
+
+    public static class IndexGet extends Expression {
+
+        private final Expression size;
+
+        public IndexGet(Expression size) {
+            this.size = size;
+        }
+
+        public Expression size() {
+            return size;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+    }
+
+    public static class IndexSet extends Expression {
+
+        private final Token name;
+        private final Expression index;
+        private final Expression value;
+
+        public IndexSet(Token name, Expression index, Expression value) {
+            this.name = name;
+            this.index = index;
+            this.value = value;
+        }
+
+        public Token name() {
+            return name;
+        }
+
+        public Expression index() {
+            return index;
+        }
+
+        public Expression value() {
+            return value;
         }
 
         @Override

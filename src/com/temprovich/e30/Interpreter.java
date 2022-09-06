@@ -1,5 +1,6 @@
 package com.temprovich.e30;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,6 +9,9 @@ import java.util.Map;
 import com.temprovich.e30.Expression.Assign;
 import com.temprovich.e30.Expression.Attribute;
 import com.temprovich.e30.Expression.Call;
+import com.temprovich.e30.Expression.Index;
+import com.temprovich.e30.Expression.IndexGet;
+import com.temprovich.e30.Expression.IndexSet;
 import com.temprovich.e30.Expression.Logical;
 import com.temprovich.e30.Expression.Parent;
 import com.temprovich.e30.Expression.Self;
@@ -20,18 +24,29 @@ import com.temprovich.e30.Statement.Continue;
 import com.temprovich.e30.Statement.Expr;
 import com.temprovich.e30.Statement.If;
 import com.temprovich.e30.Statement.Trait;
+import com.temprovich.e30.Statement.Use;
 import com.temprovich.e30.Statement.While;
 import com.temprovich.e30.error.E30RuntimeError;
-import com.temprovich.e30.preinclude.E30NativeBase;
-import com.temprovich.e30.preinclude.E30NativeInternal;
-import com.temprovich.e30.preinclude.Preinclude;
+import com.temprovich.e30.instance.E30Array;
+import com.temprovich.e30.instance.E30Callable;
+import com.temprovich.e30.instance.E30Function;
+import com.temprovich.e30.instance.E30Instance;
+import com.temprovich.e30.instance.E30Node;
+import com.temprovich.e30.lexer.Token;
+import com.temprovich.e30.lexer.TokenType;
+import com.temprovich.e30.module.E30Module;
+import com.temprovich.e30.module.E30ModuleBase;
+import com.temprovich.e30.module.E30ModuleIO;
+import com.temprovich.e30.module.E30ModuleInternal;
+import com.temprovich.e30.module.E30ModuleMath;
+import com.temprovich.e30.throwables.BreakException;
 
 public class Interpreter implements Expression.Visitor<Object>,
                                     Statement.Visitor<Void> {
 
-    private static Preinclude[] preincluded = new Preinclude[] {
-        new E30NativeInternal(),
-        new E30NativeBase()
+    private static E30Module[] preincluded = new E30Module[] {
+        new E30ModuleInternal(),
+        new E30ModuleBase()
     };
 
     private final Map<String, Object> globals;
@@ -63,7 +78,7 @@ public class Interpreter implements Expression.Visitor<Object>,
     /*
      * Determines the type of an object and returns the appropriate string
      */
-    public <T> String typeOf(T object) {
+    public static <T> String typeOf(T object) {
         if (object == null) {
             return "null";
         } else if (object instanceof Boolean) {
@@ -100,6 +115,22 @@ public class Interpreter implements Expression.Visitor<Object>,
         switch (expression.operator().type()) {
             case MINUS: return -(double) right;
             case BANG: return !predicate(right);
+            case PLUS_PLUS: {
+                Integer distance = locals.get(expression.right());
+                if (distance != null) {
+                    environment.assign(distance, slots.get(expression.right()), (double) right + 1);
+                    return null;
+                }
+                return (double) right + 1;
+            }
+            case MINUS_MINUS: {
+                Integer distance = locals.get(expression.right());
+                if (distance != null) {
+                    environment.assign(distance, slots.get(expression.right()), (double) right - 1);
+                    return null;
+                }
+                return (double) right - 1;
+            }
             default: throw new E30RuntimeError("unknown operator");
         }
     }
@@ -142,6 +173,38 @@ public class Interpreter implements Expression.Visitor<Object>,
             case STAR:
                 validateArithmeticExpression(expression.operator(), left, right);
                 return (double) left * (double) right;
+            case PLUS_EQUAL: {
+                Integer distance = locals.get(expression.left());
+                if (distance != null) {
+                    environment.assign(distance, slots.get(expression.left()), (double) left + (double) right);
+                    return null;
+                }
+                return (double) left + (double) right;
+            }
+            case MINUS_EQUAL: {
+                Integer distance = locals.get(expression.left());
+                if (distance != null) {
+                    environment.assign(distance, slots.get(expression.left()), (double) left - (double) right);
+                    return null;
+                }
+                return (double) left - (double) right;
+            }
+            case STAR_EQUAL: {
+                Integer distance = locals.get(expression.left());
+                if (distance != null) {
+                    environment.assign(distance, slots.get(expression.left()), (double) left * (double) right);
+                    return null;
+                }
+                return (double) left * (double) right;
+            }
+            case SLASH_EQUAL: {
+                Integer distance = locals.get(expression.left());
+                if (distance != null) {
+                    environment.assign(distance, slots.get(expression.left()), (double) left / (double) right);
+                    return null;
+                }
+                return (double) left / (double) right;
+            }
             default:
                 throw new E30RuntimeError("unknown operator");
         }
@@ -300,7 +363,7 @@ public class Interpreter implements Expression.Visitor<Object>,
 
         E30Callable function = (E30Callable) callee;
 
-        if (arguments.size() != function.arity()) {
+        if (arguments.size() != function.arity() && !function.isVariadic()) {
             throw new E30RuntimeError(expression.paren(), "Function received " + arguments.size() + " arguments, but expects " + function.arity() + ".");
         }
 
@@ -326,7 +389,7 @@ public class Interpreter implements Expression.Visitor<Object>,
             value = evaluate(statement.value());
         }
 
-        throw new com.temprovich.e30.Return(value);
+        throw new com.temprovich.e30.throwables.ReturnException(value);
     }
 
     @Override
@@ -438,12 +501,91 @@ public class Interpreter implements Expression.Visitor<Object>,
         return methods;
     }
 
+    @Override
+    public Object visit(Index expression) {
+        E30Array array;
+        Integer distance = locals.get(expression);
+        if (distance != null) {
+            array = (E30Array) environment.fetch(distance, slots.get(expression));
+        } else {
+            array = (E30Array) globals.get(expression.name().lexeme());
+        }
+
+        Object index = evaluate(expression.index());
+        if (!(index instanceof Double)) {
+            throw new E30RuntimeError("Array index must be a number.");
+        }
+
+        int i = ((Double) index).intValue();
+
+        if (i < 0 || i >= array.length()) {
+            throw new E30RuntimeError("Array index out of bounds.");
+        }
+
+        return array.getValue(i);
+    }
+
+    @Override
+    public Object visit(IndexGet expression) {
+        Double value = (Double) evaluate(expression.size());
+        int length = value.intValue();
+        if (length < 0) {
+            throw new E30RuntimeError("Array size must be a positive number.");
+        }
+        return new E30Array(length);
+    }
+
+    @Override
+    public Object visit(IndexSet expression) {
+        E30Array array;
+        Integer distance = locals.get(expression);
+        if (distance != null) {
+            array = (E30Array) environment.fetch(distance, slots.get(expression));
+        } else {
+            array = (E30Array) globals.get(expression.name().lexeme());
+        }
+        Object index = evaluate(expression.index());
+        if (!(index instanceof Double)) {
+            throw new E30RuntimeError("Array index must be a number.");
+        }
+
+        int i = ((Double) index).intValue();
+        
+        if (i < 0 || i >= array.length()) {
+            throw new E30RuntimeError("Array index out of bounds.");
+        }
+
+        Object value = evaluate(expression.value());
+        array.setValue(i, value);
+        return value;
+    }
+
+    @Override
+    public Void visit(Use statement) {
+        for (var moduleName : statement.modules()) {
+            E30Module module = switch (moduleName.lexeme()) {
+                case "internal" -> throw new E30RuntimeError(moduleName, "Module 'internal' already loaded.");
+                case "base"     -> throw new E30RuntimeError(moduleName, "Module 'base' already loaded.");
+                case "math"     -> new E30ModuleMath();
+                case "io"       -> new E30ModuleIO();
+                default         -> null;
+            };
+    
+            if (module == null) {
+                throw new E30RuntimeError(moduleName, "Module '" + moduleName + "'does not exist.");
+            }
+            module.inject(globals);
+        }
+
+        return null;
+    }
+
     public void resolve(Expression expression, int depth, int slot) {
         locals.put(expression, depth);
         slots.put(expression, slot);
     }
 
-    protected void executeBlock(List<Statement> statements, Environment environment) {
+    public void executeBlock(List<Statement> statements, Environment environment) {
         Environment previous = this.environment;
         try {
             this.environment = environment;
