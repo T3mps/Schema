@@ -1,4 +1,4 @@
-package com.temprovich.schema.module;
+package com.temprovich.schema.natives;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -14,9 +14,9 @@ import com.temprovich.schema.instance.SchemaCallable;
 import com.temprovich.schema.instance.SchemaList;
 import com.temprovich.schema.instance.SchemaMap;
 
-public final class SchemaModuleBase implements SchemaModule {
+public final class SchemaNativeBase implements SchemaNative {
     
-    public SchemaModuleBase() {
+    public SchemaNativeBase() {
     }
 
     /*

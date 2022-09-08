@@ -23,7 +23,6 @@ import com.temprovich.schema.Statement.Continue;
 import com.temprovich.schema.Statement.Expr;
 import com.temprovich.schema.Statement.If;
 import com.temprovich.schema.Statement.Trait;
-import com.temprovich.schema.Statement.Use;
 import com.temprovich.schema.Statement.While;
 import com.temprovich.schema.error.SchemaRuntimeError;
 import com.temprovich.schema.instance.SchemaArray;
@@ -32,27 +31,23 @@ import com.temprovich.schema.instance.SchemaFunction;
 import com.temprovich.schema.instance.SchemaInstance;
 import com.temprovich.schema.instance.SchemaNode;
 import com.temprovich.schema.lexer.Token;
-import com.temprovich.schema.lexer.TokenType;
-import com.temprovich.schema.module.SchemaModule;
-import com.temprovich.schema.module.SchemaModuleBase;
-import com.temprovich.schema.module.SchemaModuleIO;
-import com.temprovich.schema.module.SchemaModuleInternal;
-import com.temprovich.schema.module.SchemaModuleMath;
+import com.temprovich.schema.natives.SchemaNative;
+import com.temprovich.schema.natives.SchemaNativeBase;
+import com.temprovich.schema.natives.SchemaNativeInternal;
 import com.temprovich.schema.throwables.BreakException;
 
 public class Interpreter implements Expression.Visitor<Object>,
                                     Statement.Visitor<Void> {
 
-    private static SchemaModule[] preincluded = new SchemaModule[] {
-        new SchemaModuleInternal(),
-        new SchemaModuleBase()
+    private static SchemaNative[] preincluded = new SchemaNative[] {
+        new SchemaNativeInternal(),
+        new SchemaNativeBase()
     };
 
     private final Map<String, Object> globals;
     private Environment environment;
     private final Map<Object, Integer> locals;
     private final Map<Object, Integer> slots;
-
 
     public Interpreter() {
         this.globals = new HashMap<String, Object>();
@@ -70,7 +65,7 @@ public class Interpreter implements Expression.Visitor<Object>,
                 execute(statement);
             }
         } catch (SchemaRuntimeError error) {
-            Schema.runtimeError(error);
+            Schema.reporter.runtimeError(error);
         }
     }
 
@@ -318,7 +313,7 @@ public class Interpreter implements Expression.Visitor<Object>,
     public Object visit(Logical statement) {
         Object left = evaluate(statement.left());
         
-        if (statement.operator().type() == TokenType.OR) {
+        if (statement.operator().type() == Token.Type.OR) {
             if (predicate(left)) return left;
         } else {
             if (!predicate(left)) return left;
@@ -557,26 +552,6 @@ public class Interpreter implements Expression.Visitor<Object>,
         Object value = evaluate(expression.value());
         array.setValue(i, value);
         return value;
-    }
-
-    @Override
-    public Void visit(Use statement) {
-        for (var moduleName : statement.modules()) {
-            SchemaModule module = switch (moduleName.lexeme()) {
-                case "internal" -> throw new SchemaRuntimeError(moduleName, "Module 'internal' already loaded.");
-                case "base"     -> throw new SchemaRuntimeError(moduleName, "Module 'base' already loaded.");
-                case "math"     -> new SchemaModuleMath();
-                case "io"       -> new SchemaModuleIO();
-                default         -> null;
-            };
-    
-            if (module == null) {
-                throw new SchemaRuntimeError(moduleName, "Module '" + moduleName + "'does not exist.");
-            }
-            module.inject(globals);
-        }
-
-        return null;
     }
 
     public void resolve(Expression expression, int depth, int slot) {

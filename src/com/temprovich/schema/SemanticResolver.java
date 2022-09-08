@@ -13,7 +13,6 @@ import com.temprovich.schema.Expression.Parent;
 import com.temprovich.schema.Expression.Self;
 import com.temprovich.schema.Expression.Set;
 import com.temprovich.schema.Statement.Trait;
-import com.temprovich.schema.Statement.Use;
 import com.temprovich.schema.lexer.Token;
 
 public class SemanticResolver implements Expression.Visitor<Void>, Statement.Visitor<Void> {
@@ -81,7 +80,7 @@ public class SemanticResolver implements Expression.Visitor<Void>, Statement.Vis
         if (!scopes.isEmpty() &&
             scopes.peek().containsKey(statement.name().lexeme()) &&
             !scopes.peek().get(statement.name().lexeme()).defined) {
-                Schema.error(statement.name(), "Cannot read local variable in its own initializer.");
+                Schema.reporter.error(statement.name(), "Cannot read local variable in its own initializer.");
         }
 
         resolveLocal(statement, statement.name());
@@ -155,12 +154,12 @@ public class SemanticResolver implements Expression.Visitor<Void>, Statement.Vis
     @Override
     public Void visit(Statement.Return statement) {
         if (currentFunction == FunctionType.NONE) {
-            Schema.error(statement.keyword(), "Cannot return from top-level code.");
+            Schema.reporter.error(statement.keyword(), "Cannot return from top-level code.");
         }
 
         if (statement.value() != null) {
             if (currentFunction == FunctionType.DEFINITION) {
-                Schema.error(statement.keyword(), "Cannot return a value from a definition.");
+                Schema.reporter.error(statement.keyword(), "Cannot return a value from a definition.");
             }
             resolve(statement.value());
         }
@@ -190,7 +189,7 @@ public class SemanticResolver implements Expression.Visitor<Void>, Statement.Vis
 
         if (parent != null) {
             if (statement.name().lexeme().equals(parent.name().lexeme())) {
-                Schema.error(parent.name(), "A node cannot inherit from itself.");
+                Schema.reporter.error(parent.name(), "A node cannot inherit from itself.");
             }
 
             currentNodeType = NodeType.CHILD;
@@ -246,7 +245,7 @@ public class SemanticResolver implements Expression.Visitor<Void>, Statement.Vis
     @Override
     public Void visit(Self expression) {
         if (currentNodeType == NodeType.NONE) {
-            Schema.error(expression.keyword(), "Cannot use 'self' outside of a node.");
+            Schema.reporter.error(expression.keyword(), "Cannot use 'self' outside of a node.");
             return null;
         }
 
@@ -257,15 +256,15 @@ public class SemanticResolver implements Expression.Visitor<Void>, Statement.Vis
     @Override
     public Void visit(Parent expression) {
         if (currentNodeType == NodeType.NONE) {
-            Schema.error(expression.keyword(), "Cannot use 'parent' outside of a node.");
+            Schema.reporter.error(expression.keyword(), "Cannot use 'parent' outside of a node.");
             return null;
         }
         if (currentNodeType == NodeType.TRAIT) {
-            Schema.error(expression.keyword(), "Cannot use 'parent' in a trait.");
+            Schema.reporter.error(expression.keyword(), "Cannot use 'parent' in a trait.");
             return null;
         }
         if (currentNodeType != NodeType.CHILD) {
-            Schema.error(expression.keyword(), "Cannot use 'parent' in a node with no parent.");
+            Schema.reporter.error(expression.keyword(), "Cannot use 'parent' in a node with no parent.");
             return null;
         }
         
@@ -320,12 +319,6 @@ public class SemanticResolver implements Expression.Visitor<Void>, Statement.Vis
         return null;
     }
 
-    @Override
-    public Void visit(Use statement) {
-        // nothing to handle
-        return null;
-    }
-
     private enum NodeType {
         NONE,
         NODE,
@@ -364,7 +357,7 @@ public class SemanticResolver implements Expression.Visitor<Void>, Statement.Vis
 
         var scope = scopes.peek();
         if (scope.containsKey(name.lexeme())) {
-            Schema.error(name, "Variable with this name already declared in this scope.");
+            Schema.reporter.error(name, "Variable with this name already declared in this scope.");
         }
 
         scope.put(name.lexeme(), new Variable(scope.size()));

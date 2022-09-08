@@ -1,4 +1,4 @@
-use math, io;
+use traits;
 
 function hi() {
     print(PI);

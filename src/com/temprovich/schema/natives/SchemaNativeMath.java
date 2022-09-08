@@ -1,10 +1,10 @@
-package com.temprovich.schema.module;
+package com.temprovich.schema.natives;
 
 import java.util.Map;
 
-public class SchemaModuleMath implements SchemaModule {
+public class SchemaNativeMath implements SchemaNative {
 
-    public SchemaModuleMath() {
+    public SchemaNativeMath() {
     }
 
     private static final Definition PI = new Definition("PI", Math.PI);

@@ -1,4 +1,4 @@
-package com.temprovich.schema.module;
+package com.temprovich.schema.natives;
 
 import java.util.List;
 import java.util.Map;
@@ -6,9 +6,9 @@ import java.util.Map;
 import com.temprovich.schema.Interpreter;
 import com.temprovich.schema.instance.SchemaCallable;
 
-public class SchemaModuleIO implements SchemaModule {
+public class SchemaNativeIO implements SchemaNative {
 
-    public SchemaModuleIO() {
+    public SchemaNativeIO() {
     }
 
     /*

@@ -31,31 +31,31 @@ public final class Lexer {
     public static final String KW_ARRAY = "array";
     public static final String KW_USE = "use";
 
-    private static final Map<String, TokenType> keywords;
+    private static final Map<String, Token.Type> keywords;
 
     static {
-        keywords = new HashMap<String, TokenType>();
-        keywords.put(KW_AND, TokenType.AND);
-        keywords.put(KW_NODE, TokenType.NODE);
-        keywords.put(KW_ELSE, TokenType.ELSE);
-        keywords.put(KW_FALSE, TokenType.FALSE);
-        keywords.put(KW_FOR, TokenType.FOR);
-        keywords.put(KW_FUNCTION, TokenType.FUNCTION);
-        keywords.put(KW_IF, TokenType.IF);
-        keywords.put(KW_NULL, TokenType.NULL);
-        keywords.put(KW_OR, TokenType.OR);
-        keywords.put(KW_RETURN, TokenType.RETURN);
-        keywords.put(KW_PARENT, TokenType.PARENT);
-        keywords.put(KW_SELF, TokenType.SELF);
-        keywords.put(KW_TRUE, TokenType.TRUE);
-        keywords.put(KW_AUTO, TokenType.AUTO);
-        keywords.put(KW_WHILE, TokenType.WHILE);
-        keywords.put(KW_BREAK, TokenType.BREAK);
-        keywords.put(KW_CONTINUE, TokenType.CONTINUE);
-        keywords.put(KW_TRAIT, TokenType.TRAIT);
-        keywords.put(KW_WITH, TokenType.WITH);
-        keywords.put(KW_ARRAY, TokenType.ARRAY);
-        keywords.put(KW_USE, TokenType.USE);
+        keywords = new HashMap<String, Token.Type>();
+        keywords.put(KW_AND, Token.Type.AND);
+        keywords.put(KW_NODE, Token.Type.NODE);
+        keywords.put(KW_ELSE, Token.Type.ELSE);
+        keywords.put(KW_FALSE, Token.Type.FALSE);
+        keywords.put(KW_FOR, Token.Type.FOR);
+        keywords.put(KW_FUNCTION, Token.Type.FUNCTION);
+        keywords.put(KW_IF, Token.Type.IF);
+        keywords.put(KW_NULL, Token.Type.NULL);
+        keywords.put(KW_OR, Token.Type.OR);
+        keywords.put(KW_RETURN, Token.Type.RETURN);
+        keywords.put(KW_PARENT, Token.Type.PARENT);
+        keywords.put(KW_SELF, Token.Type.SELF);
+        keywords.put(KW_TRUE, Token.Type.TRUE);
+        keywords.put(KW_AUTO, Token.Type.AUTO);
+        keywords.put(KW_WHILE, Token.Type.WHILE);
+        keywords.put(KW_BREAK, Token.Type.BREAK);
+        keywords.put(KW_CONTINUE, Token.Type.CONTINUE);
+        keywords.put(KW_TRAIT, Token.Type.TRAIT);
+        keywords.put(KW_WITH, Token.Type.WITH);
+        keywords.put(KW_ARRAY, Token.Type.ARRAY);
+        keywords.put(KW_USE, Token.Type.USE);
     }
     
     private final String source;
@@ -75,7 +75,7 @@ public final class Lexer {
             scanToken();
         }
 
-        tokens.add(new Token(TokenType.EOF, "", null, line));
+        tokens.add(new Token(Token.Type.EOF, "", null, line));
         return tokens;
     }
 
@@ -83,26 +83,26 @@ public final class Lexer {
         char c = advance();
 
         switch (c) {
-            case '(': addToken(TokenType.LEFT_PAREN); break;
-            case ')': addToken(TokenType.RIGHT_PAREN); break;
-            case '{': addToken(TokenType.LEFT_BRACE); break;
-            case '}': addToken(TokenType.RIGHT_BRACE); break;
-            case '[': addToken(TokenType.LEFT_SQUARE_BRACKET); break;
-            case ']': addToken(TokenType.RIGHT_SQUARE_BRACKET); break;
+            case '(': addToken(Token.Type.LEFT_PAREN); break;
+            case ')': addToken(Token.Type.RIGHT_PAREN); break;
+            case '{': addToken(Token.Type.LEFT_BRACE); break;
+            case '}': addToken(Token.Type.RIGHT_BRACE); break;
+            case '[': addToken(Token.Type.LEFT_SQUARE_BRACKET); break;
+            case ']': addToken(Token.Type.RIGHT_SQUARE_BRACKET); break;
 
-            case ',': addToken(TokenType.COMMA); break;
-            case '.': addToken(TokenType.DOT); break;
-            case ';': addToken(TokenType.SEMICOLON); break;
-            case ':': addToken(match(':') ? TokenType.COLON_COLON : TokenType.COLON); break;
+            case ',': addToken(Token.Type.COMMA); break;
+            case '.': addToken(Token.Type.DOT); break;
+            case ';': addToken(Token.Type.SEMICOLON); break;
+            case ':': addToken(match(':') ? Token.Type.COLON_COLON : Token.Type.COLON); break;
 
-            case '!': addToken(match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
-            case '=': addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
-            case '<': addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;
-            case '>': addToken(match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
+            case '!': addToken(match('=') ? Token.Type.BANG_EQUAL : Token.Type.BANG); break;
+            case '=': addToken(match('=') ? Token.Type.EQUAL_EQUAL : Token.Type.EQUAL); break;
+            case '<': addToken(match('=') ? Token.Type.LESS_EQUAL : Token.Type.LESS); break;
+            case '>': addToken(match('=') ? Token.Type.GREATER_EQUAL : Token.Type.GREATER); break;
 
-            case '+': addToken(match('=') ? TokenType.PLUS_EQUAL : match('+') ? TokenType.PLUS_PLUS : TokenType.PLUS); break;
-            case '-': addToken(match('=') ? TokenType.MINUS_EQUAL : match('-') ? TokenType.MINUS_MINUS : TokenType.MINUS); break;
-            case '*': addToken(match('=') ? TokenType.STAR_EQUAL : TokenType.STAR); break;
+            case '+': addToken(match('=') ? Token.Type.PLUS_EQUAL : match('+') ? Token.Type.PLUS_PLUS : Token.Type.PLUS); break;
+            case '-': addToken(match('=') ? Token.Type.MINUS_EQUAL : match('-') ? Token.Type.MINUS_MINUS : Token.Type.MINUS); break;
+            case '*': addToken(match('=') ? Token.Type.STAR_EQUAL : Token.Type.STAR); break;
             case '/':
                 if (match('/')) {
                     while (peek() != '\n' && !atEnd()) {
@@ -121,7 +121,7 @@ public final class Lexer {
                     advance();
                     advance();
                 } else {
-                    addToken(match('=') ? TokenType.SLASH_EQUAL : TokenType.SLASH); break;
+                    addToken(match('=') ? Token.Type.SLASH_EQUAL : Token.Type.SLASH); break;
                 }
                 break;
             case ' ':
@@ -140,7 +140,7 @@ public final class Lexer {
                 } else if (isAlpha(c)) {
                     identifier();
                 } else {
-                    Schema.error(line, "Unexpected character.");
+                    Schema.reporter.error(line, "Unexpected character.");
                 }
                 break;
         }
@@ -156,13 +156,13 @@ public final class Lexer {
         }
 
         if (atEnd()) {
-            Schema.error(line, "Unterminated string.");
+            Schema.reporter.error(line, "Unterminated string.");
             return;
         }
         
         advance();
         String value = source.substring(start + 1, current - 1);
-        addToken(TokenType.STRING, value);
+        addToken(Token.Type.STRING, value);
     }
 
     private void number() {
@@ -178,7 +178,7 @@ public final class Lexer {
             }
         }
         
-        addToken(TokenType.NUMBER, Double.parseDouble(source.substring(start, current)));
+        addToken(Token.Type.NUMBER, Double.parseDouble(source.substring(start, current)));
     }
 
     private void identifier() {
@@ -187,10 +187,10 @@ public final class Lexer {
         }
         
         String text = source.substring(start, current);
-        TokenType type = keywords.get(text);
+        Token.Type type = keywords.get(text);
 
         if (type == null) {
-            type = TokenType.IDENTIFIER;
+            type = Token.Type.IDENTIFIER;
         }
 
         addToken(type);
@@ -206,11 +206,11 @@ public final class Lexer {
         return source.charAt(current++);
     }
 
-    private void addToken(TokenType type) {
+    private void addToken(Token.Type type) {
         addToken(type, null);
     }
 
-    private void addToken(TokenType type, Object literal) {
+    private void addToken(Token.Type type, Object literal) {
         String text = source.substring(start, current);
         tokens.add(new Token(type, text, literal, line));
     }

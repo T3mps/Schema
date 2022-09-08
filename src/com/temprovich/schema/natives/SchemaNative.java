@@ -1,12 +1,12 @@
-package com.temprovich.schema.module;
+package com.temprovich.schema.natives;
 
 import java.util.Map;
 
-public interface SchemaModule {
+public interface SchemaNative {
     
     public abstract void inject(Map<String, Object> environment);
 
-    public record ConstantDefinition(String name, Object value) implements SchemaModule {
+    public record ConstantDefinition(String name, Object value) implements SchemaNative {
         @Override
         public void inject(Map<String, Object> environment) {
             environment.put(name, value);

@@ -29,8 +29,6 @@ public abstract class Statement {
         public abstract R visit(Break statement);
 
         public abstract R visit(Continue statement);
-
-        public abstract R visit(Use statement);
     }
 
     public static class Block extends Statement {
@@ -286,24 +284,6 @@ public abstract class Statement {
     public static class Continue extends Statement {
 
         public Continue() {
-        }
-
-        @Override
-        public <R> R accept(Visitor<R> visitor) {
-            return visitor.visit(this);
-        }
-    }
-
-    public static class Use extends Statement {
-
-        private final List<Token> modules;
-
-        public Use(List<Token> modules) {
-            this.modules = modules;
-        }
-
-        public List<Token> modules() {
-            return modules;
         }
 
         @Override
