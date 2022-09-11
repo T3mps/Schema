@@ -1,9 +1,15 @@
 use traits;
 
-function hi() {
-    print(PI);
-    auto in = scan();
-    print(in);
+node D : C {
+
+    d() {
+        self.a();
+        self.b();
+        self.c();
+        print("d");
+    }
 }
 
-hi();
+auto d = D().d;
+
+d();

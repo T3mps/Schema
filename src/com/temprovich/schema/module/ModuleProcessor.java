@@ -3,80 +3,85 @@ package com.temprovich.schema.module;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.temprovich.schema.Preprocessor;
 import com.temprovich.schema.Schema;
+import com.temprovich.schema.lexer.Lexer;
 import com.temprovich.schema.report.ReportLibrary;
 
-public class ModuleProcessor implements Preprocessor {
+public class ModuleProcessor {
 
     private String path;
     private String sourceFileName;
-    private Set<String> modules;
+    private List<String> modules;
+    private StringBuilder source;
 
-    public ModuleProcessor(Path path) {
-        String fqf = path.toFile().getAbsoluteFile().toString();
-        int idx = fqf.lastIndexOf("/") + 1;
-        this.path = fqf.substring(0, idx);
-        this.sourceFileName = fqf.substring(idx, fqf.length());
-        this.modules = new HashSet<String>();
-        modules.add(sourceFileName);
+    public ModuleProcessor(String path) {
+        int idx = path.lastIndexOf("/") + 1;
+        if (idx == 0) {
+            idx = path.lastIndexOf("\\") + 1;
+        }
+
+        this.path = path.substring(0, idx);
+        this.sourceFileName = path.substring(idx, path.length());
+        this.modules = new ArrayList<String>();
+        this.source = new StringBuilder();
     }
 
-    @Override
     public String process() {
-        StringBuilder lines = new StringBuilder();
+        determineModules(path + sourceFileName);
+        modules.add(sourceFileName);
 
-        try (var br = new BufferedReader(new FileReader(path + sourceFileName))) {
-            String line;
+        for (int i = 0; i < modules.size(); i++) {
+            String module = modules.get(i);
 
-            while ((line = br.readLine()) != null) {
-                if (line.startsWith("use")) {
-                    String[] modules = line.substring(4, line.length() - 1).split(",");
-                    Arrays.stream(modules).forEach(m -> {
-                        String module = m.trim();
-                        if (this.modules.contains(module)) {
-                            Schema.reporter.error(ReportLibrary.DUPLICATE_MODULE, module);
-                        } else {
-                            this.modules.add(module);
-                            lines.append(processModule(module));
-                        }
-                    });
-                    continue;
+            try (var br = new BufferedReader(new FileReader(this.path + module))) {
+                String line;
+    
+                while ((line = br.readLine()) != null) {
+                    if (!line.startsWith(Lexer.KW_USE)) {
+                        source.append(line)
+                              .append(System.lineSeparator());
+                    }
                 }
-                
-                lines.append(line);
-                lines.append(System.lineSeparator());
+            } catch (IOException e) {
+                Schema.reporter.error(ReportLibrary.NON_EXISTENT_FILE, path + module);
+                System.exit(Schema.EXIT_CODE__ERROR);
             }
-        } catch (IOException e) {
-            Schema.reporter.error(ReportLibrary.NON_EXISTENT_FILE, path);
-            System.exit(Schema.EXIT_CODE__ERROR);
         }
 
-        return lines.toString();
+        return source.toString();
     }
 
-    private String processModule(String module) {
-        if (!module.contains(".")) {
-            module += Schema.EXTENSIONS[0];
+    private void determineModules(String path) {
+        if (modules.contains(path)) {
+            return;
         }
-
-        StringBuilder lines = new StringBuilder();
-        try (var br = new BufferedReader(new FileReader(path + module))) {
-            String line;
         
+        try (var br = new BufferedReader(new FileReader(path))) {
+            String line;
+
             while ((line = br.readLine()) != null) {
-                lines.append(line);
-                lines.append(System.lineSeparator());
+                if (line.startsWith(Lexer.KW_USE)) {
+                    String[] modules = line.substring(4, line.length() - 1).split(",");
+
+                    for (int i = 0; i < modules.length; i++) {
+                        String module = modules[i].trim();
+                        if (!module.contains(".")) {
+                            module += Schema.EXTENSIONS[0];
+                        }
+
+                        determineModules(this.path + module);
+                        if (!this.modules.contains(module)) {
+                            this.modules.add(module);
+                        }
+                    }
+                }
             }
         } catch (IOException e) {
             Schema.reporter.error(ReportLibrary.NON_EXISTENT_FILE, path);
             System.exit(Schema.EXIT_CODE__ERROR);
         }
-        return lines.toString();
     }
 }

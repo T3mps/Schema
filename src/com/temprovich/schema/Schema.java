@@ -1,12 +1,12 @@
 package com.temprovich.schema;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import com.temprovich.schema.error.SchemaError;
 import com.temprovich.schema.lexer.Lexer;
 import com.temprovich.schema.lexer.Token;
 import com.temprovich.schema.module.ModuleProcessor;
@@ -46,14 +46,9 @@ public class Schema {
         }
     }
 
-    private static void terminate(String message, int code) {
-        System.err.println(message);
-        System.exit(code);
-    }
-
     private static String validate(String fileName) {
         if (fileName == null) {
-            throw new IllegalArgumentException(ReportLibrary.NULL_FILE_NAME);
+            throw new SchemaError(ReportLibrary.NULL_FILE_NAME);
         }
 
         // check for extention
@@ -66,24 +61,22 @@ public class Schema {
             }
         }
         if (!valid) {
-            throw new IllegalArgumentException(ErrorReporter.format(ReportLibrary.INVALID_FILE_EXTENSION, fileName, EXTENSIONS[0], EXTENSIONS[1]));
+            throw new SchemaError(ErrorReporter.format(ReportLibrary.INVALID_FILE_EXTENSION, fileName, EXTENSIONS[0], EXTENSIONS[1]));
         }
         
         // check for file
         Path path = Paths.get(fileName);
         if (!Files.exists(path)) {
-            throw new IllegalArgumentException(ErrorReporter.format(ReportLibrary.NON_EXISTENT_FILE, fileName));
+            throw new SchemaError(ErrorReporter.format(ReportLibrary.NON_EXISTENT_FILE, fileName));
         }
 
-        // process modules
-        Preprocessor processor = new ModuleProcessor(path);
-        System.out.println(processor.process());
-        return "";
+        return fileName;
     }
 
     private static void runScript(String path) throws IOException {
-        // byte[] bytes = Files.readAllBytes(Paths.get(path));
-        // run(new String(bytes, Charset.defaultCharset()));
+        ModuleProcessor processor = new ModuleProcessor(path);
+        String source = processor.process();
+        run(source);
 
         if (reporter.hadError()) {
             System.exit(EXIT_CODE__ERROR);
@@ -96,48 +89,27 @@ public class Schema {
     }
 
     private static void run(String src) {
-        // Lexer lexer = new Lexer(src);
-        // List<Token> tokens = lexer.tokenize();
-        // Parser parser = new Parser(tokens);
-        // List<Statement> statements = parser.parse();
+        Lexer lexer = new Lexer(src);
+        List<Token> tokens = lexer.tokenize();
+        Parser parser = new Parser(tokens);
+        List<Statement> statements = parser.parse();
 
-        // if (reporter.hadError()) {
-        //     return;
-        // }
+        if (reporter.hadError()) {
+            return;
+        }
 
-        // SemanticResolver resolver = new SemanticResolver(interpreter);
-        // resolver.resolve(statements);
+        SemanticResolver resolver = new SemanticResolver(interpreter);
+        resolver.resolve(statements);
 
-        // if (reporter.hadError()) {
-        //     return;
-        // }
+        if (reporter.hadError()) {
+            return;
+        }
 
-        // interpreter.interpret(statements);
+        interpreter.interpret(statements);
     }
 
-    // public static void error(String message) {
-    //     System.err.println(message);
-    //     hadError = true;
-    // }
-    // public static void error(int line, String message) {
-    //     report(line, "", message);
-    // }
-    
-    // public static void error(Token token, String message) {
-    //     if (token.type() == Token.Type.EOF) {
-    //         report(token.line(), " at end", message);
-    //     } else {
-    //         report(token.line(), " at '" + token.lexeme() + "'", message);
-    //     }
-    // }
-
-    // public static void runtimeError(SchemaRuntimeError error) {
-    //     System.err.println(error.getMessage() + "\n[line " + error.token().line() + "]");
-    //     hadRuntimeError = true;
-    // }
-
-    // private static void report(int line, String where, String message) {
-    //     System.err.println("[line " + line + "] Error" + where + ": " + message);
-    //     hadError = true;
-    // }
+    private static void terminate(String message, int code) {
+        System.err.println(message);
+        System.exit(code);
+    }
 }

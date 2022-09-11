@@ -3,19 +3,19 @@
         "configurations": [
             {
                 "type": "java",
+                "name": "Launch Schema",
+                "request": "launch",
+                "mainClass": "com.temprovich.schema.Schema",
+                "projectName": "Schema_5790553b",
+                "args": "${command:SpecifyProgramArgs}",
+                "console": "externalTerminal"
+            },
+            {
+                "type": "java",
                 "name": "Launch ErrorReporter",
                 "request": "launch",
                 "mainClass": "com.temprovich.schema.report.ErrorReporter",
                 "projectName": "Schema_57ad8fd8"
-            },
-            {
-                "type": "java",
-                "name": "Launch Schema",
-                "request": "launch",
-                "mainClass": "com.temprovich.schema.Schema",
-                "projectName": "Schema_57ad8fd8",
-                "args": "${command:SpecifyProgramArgs}",
-                "console": "externalTerminal"
             },
             {
                 "type": "java",
