@@ -45,9 +45,9 @@ public class Interpreter implements Expression.Visitor<Object>,
     };
 
     private final Map<String, Object> globals;
-    private Environment environment;
     private final Map<Object, Integer> locals;
     private final Map<Object, Integer> slots;
+    private Environment environment;
 
     public Interpreter() {
         this.globals = new HashMap<String, Object>();
@@ -86,7 +86,7 @@ public class Interpreter implements Expression.Visitor<Object>,
         } else if (object instanceof String) {
             return "string";
         } else if (object instanceof SchemaCallable) {
-            return "function";
+            return "callable";
         }
         
         return "?";

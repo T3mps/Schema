@@ -6,6 +6,13 @@
                 "name": "Launch Schema",
                 "request": "launch",
                 "mainClass": "com.temprovich.schema.Schema",
+                "projectName": "Schema_57ad8fd8"
+            },
+            {
+                "type": "java",
+                "name": "Launch Schema",
+                "request": "launch",
+                "mainClass": "com.temprovich.schema.Schema",
                 "projectName": "Schema_5790553b",
                 "args": "${command:SpecifyProgramArgs}",
                 "console": "externalTerminal"
